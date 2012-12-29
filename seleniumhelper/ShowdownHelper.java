@@ -1,6 +1,8 @@
 package seleniumhelper;
-import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.io.File;
+import java.util.*;
 
 import org.openqa.selenium.*;
 
@@ -106,7 +108,7 @@ public class ShowdownHelper extends Helper {
 		clickAt(By.cssSelector("div.replay-controls > button"));
 	}
 	
-	////Battle log functions
+	//// Battle log functions
 	
 	/**
 	 * Gets the substring, starting at startIndex, up to the first instance of 'stop'.
@@ -188,6 +190,41 @@ public class ShowdownHelper extends Helper {
 		else {
 			return battleText.substring(lastTurnIdx, currentTurnIdx);
 		}
+	}
+	
+	/**
+	 * Attempts to search the log and retrieve the actual name of a Pokemon given a nickname and owner.
+	 * @param ownerName Name of the player that owns this Pokemon.
+	 * @param nickname The nickname of the Pokemon.
+	 * @return String - The Pokemon's real name, or empty string on failure.
+	 */
+	public String getPokemonForNickname(String ownerName, String nickname) {
+		Pattern p = Pattern.compile(ownerName + " sent out " + nickname + " \\((.+)\\)!", Pattern.MULTILINE);
+		Matcher m = p.matcher(getBattleLogText());
+		if (m.find()) {
+			return m.group(1);
+		}
+		return "";
+	}
+	
+	/**
+	 * Attempts to find the team of the specified owner.
+	 * First it will check the announcement in the log of the team that you see in most formats.
+	 * If that fails, it will scan the owner's team icons to try and find as many as it can that way.
+	 * NOTE, in the second case, if nicknames are present, they are NOT resolved to actual names. It is
+	 * up to you to ensure that the names retrieved are real names.
+	 * @param owner Name of team's owner
+	 * @return String Array - Pokemon names, or empty array on failure.
+	 */
+	public String[] getTeam(String owner) {
+		Pattern p = Pattern.compile(owner + "'s team:\n(.+ / +?.*?)$", Pattern.MULTILINE);
+		Matcher m = p.matcher(getBattleLogText());
+		if (m.find()) {
+			return m.group(1).split(" / ");
+		}
+		// TODO: second case
+		ArrayList<String> team = new ArrayList<String>(6);
+		return team.toArray(new String[0]);
 	}
 	
 	/*public String getBattleLogText() {
