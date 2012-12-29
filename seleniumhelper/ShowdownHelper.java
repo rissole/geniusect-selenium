@@ -1,4 +1,7 @@
 package seleniumhelper;
+import java.util.Scanner;
+import java.io.File;
+
 import org.openqa.selenium.*;
 
 /**
@@ -103,10 +106,92 @@ public class ShowdownHelper extends Helper {
 		clickAt(By.cssSelector("div.replay-controls > button"));
 	}
 	
-	//// Battle log functions
+	////Battle log functions
 	
-	public boolean battleLogContains(String text) {
-		return true;
+	/**
+	 * Gets the substring, starting at startIndex, up to the first instance of 'stop'.
+	 * @param s String to search
+	 * @param startIndex Index to start from
+	 * @param stop String to stop at
+	 * @return The whole string if the 'stop' could not be found
+	 */
+	private String substringToFirst(String s, int startIndex, String stop) {
+		int idx = s.indexOf(stop, startIndex);
+		if (idx == -1) {
+			return s;
+		}
+		return s.substring(startIndex, idx);
 	}
 	
+	/**
+	 * Gets the latest turn in the current battle.
+	 * @return Integer - the turn, or 0 if a turn has not been started.
+	 */
+	public int getCurrentTurn() {
+		String cTT = getCurrentTurnText();
+		if (cTT == "") {
+			return 0;
+		}
+		String turnString = substringToFirst(cTT, 5, "\n");
+		try {
+			return Integer.parseInt(turnString);
+		}
+		catch (Exception e) {
+			return 0;
+		}
+	}
+	
+	/**
+	 * Gets the whole text in the Battle Log.
+	 * @return String - battle log text, including new lines.
+	 */
+	public String getBattleLogText() {
+		String text = "";
+		try {
+			Scanner r = new Scanner(new File("battlesample.log"));
+			while (r.hasNextLine()) {
+				text += r.nextLine() + "\n";
+			}
+			return text;
+		}
+		catch (Exception e) {
+			return "File not found";
+		}
+	}
+	
+	/**
+	 * Gets the text of the current turn we are in.
+	 * @return String - current turn text, or empty string if a turn hasn't started yet.
+	 */
+	public String getCurrentTurnText() {
+		String battleText = getBattleLogText();
+		int currentTurnIdx = battleText.lastIndexOf("Turn");
+		if (currentTurnIdx == -1) {
+			return "";
+		}
+		else {
+			return battleText.substring(currentTurnIdx);
+		}
+	}
+	
+	/**
+	 * Gets the text of the last turn we were in.
+	 * @return String - last turn text, or empty string if a turn hasn't been completed yet.
+	 */
+	public String getLastTurnText() {
+		String battleText = getBattleLogText();
+		int currentTurnIdx = battleText.lastIndexOf("Turn");
+		int lastTurnIdx = battleText.lastIndexOf("Turn", currentTurnIdx-4);
+		if (lastTurnIdx == -1) {
+			return "";
+		}
+		else {
+			return battleText.substring(lastTurnIdx, currentTurnIdx);
+		}
+	}
+	
+	/*public String getBattleLogText() {
+		WebElement battleLog = driver.findElement(By.cssSelector("div.battle-log"));
+		return battleLog.getText();
+	}*/
 }

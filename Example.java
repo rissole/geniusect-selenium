@@ -5,11 +5,7 @@ import seleniumhelper.ShowdownHelper;
 
 public class Example  {
     public static void main(String[] args) {
-        WebDriver driver = new FirefoxDriver();
-        
-        ShowdownHelper showdown = new ShowdownHelper(driver);
-        showdown.open();
-        showdown.login();
-        showdown.findBattle("Random Battle", "");
+    	ShowdownHelper showdown = new ShowdownHelper(null);
+        System.out.println(showdown.getCurrentTurn());
     }
 }
