@@ -4,6 +4,8 @@ import java.util.regex.Pattern;
 import java.util.*;
 
 import org.openqa.selenium.*;
+import org.openqa.selenium.support.ui.ExpectedCondition;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
 /**
  * Selenium helper functions specifically for Pokemon Showdown.
@@ -57,8 +59,8 @@ public class ShowdownHelper extends Helper {
 	 * Logs in to Showdown with the supplied information.
 	 */
 	public void login(String userName, String password) {
-		By loginButtonBy = By.xpath("(//button[@onclick=\"return rooms['lobby'].formRename()\"])[595]");
-		waitForElementPresent(loginButtonBy);
+		By loginButtonBy = By.xpath("//button[contains(text(),'Choose name')]");
+		waitForElementPresent(loginButtonBy, 20);
 		
 	    driver.findElement(loginButtonBy).click();
 	    driver.findElement(By.id("overlay_name")).clear();
@@ -121,17 +123,19 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	/**
-	 * Leaves the current battle
+	 * Leaves the current battle (click the close room button)
 	 */
 	public void leaveBattle() {
-		clickAt(By.cssSelector("span.close.close0"));
+		WebElement currentTab = driver.findElement(By.xpath("//a[contains(@class, 'tab battletab cur')]"));
+		currentTab.findElement(By.xpath("//span[contains(@class, 'close')]")).click();
 	}
 	
 	/**
-	 * Alias for leaveBattle
+	 * Surrenders the current battle.
 	 */
 	public void surrender() {
-		leaveBattle();
+		sendMessage("/surrender");
+		waitForBattleLogContains(getOpponentName() + " won the battle!");
 	}
 	
 	/**
@@ -162,6 +166,47 @@ public class ShowdownHelper extends Helper {
 		if (logToConsole) {
 			System.out.println("[BATTLE LOG] " + getUserName() + ": " + message);
 		}
+	}
+	
+	/**
+	 * Waits for the next turn to begin or the battle to end, kicking inactive players.
+	 * @param kickAfterSeconds Clicks 'Kick inactive player' after this number of seconds. 
+	 * Set to 0 to never kick
+	 * @return Returns true if we are at the next turn, or false if the game ended (because we kicked them)
+	 */
+	public boolean waitForNextTurn(int kickAfterSeconds) {
+		int waited = 0;
+		boolean haveWon = getBattleLogText().contains(getUserName() + " won the battle!");
+		while (!isElementPresent(By.cssSelector("div.moveselect")) && !haveWon) {
+			if (kickAfterSeconds != 0 && waited >= kickAfterSeconds) {
+				kickInactivePlayer();
+			}
+			sleep(1000);
+			waited += 1;
+		}
+		return (!haveWon);
+	}
+	
+	/**
+	 * Chooses the specified move to attack with.
+	 * @param moveName The move to use.
+	 */
+	public void doMove(String moveName) {
+		clickAt(By.xpath("//button[text()='"+moveName+"']"));
+	}
+	
+	/**
+	 * Gets the moves we currently have.
+	 * @return String List - names of the moves we have
+	 */
+	public List<String> getMoves() {
+		WebElement moveMenu = driver.findElement(By.cssSelector("div.movemenu"));
+		List<WebElement> moveButtons = moveMenu.findElements(By.tagName("button"));
+		List<String> moves = new ArrayList<String>(4);
+		for (WebElement e : moveButtons) {
+			moves.add(e.getText());
+		}
+		return moves;
 	}
 	
 	//// Battle log functions
@@ -285,5 +330,17 @@ public class ShowdownHelper extends Helper {
 			team.add(name);
 		}
 		return team;
+	}
+	
+	/**
+	 * Waits until the battle log contains the specified text (up to 5 minutes)
+	 * @param message String to wait for.
+	 */
+	public void waitForBattleLogContains(final String message) {
+		(new WebDriverWait(driver, 300)).until(new ExpectedCondition<Boolean>() {
+            public Boolean apply(WebDriver d) {
+                return getBattleLogText().contains(message);
+            }
+        });
 	}
 }

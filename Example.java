@@ -12,7 +12,7 @@ public class Example  {
     	// wait up to 10 seconds for elements to load
     	driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
         
-        ShowdownHelper showdown = new ShowdownHelper(driver);
+        ShowdownHelper showdown = new ShowdownHelper(driver, "http://play.pokemonshowdown.com/~~rissole-showdown.herokuapp.com:80");
         showdown.open();
         showdown.login();
         showdown.findBattle("Random Battle", "");
@@ -31,11 +31,13 @@ public class Example  {
         System.out.println("My hapless opponent is " + showdown.getOpponentName() + ", and this is his team; or what I know of it:");
         team = showdown.getTeam(showdown.getOpponentName());
         for (int i = 0; i < team.size(); ++i) {
-        	System.out.print(team.get(i) + ", ");
+        	System.out.print(team.get(i));
         	if (i != team.size()-1)
         		System.out.print(", ");
         }
         System.out.println();
         showdown.sendMessage("Heh.");
+        showdown.surrender();
+        showdown.leaveBattle();
     }
 }
