@@ -13,6 +13,7 @@ public class ShowdownHelper extends Helper {
 	
 	// Base URL of Pokemon Showdown server.
 	private String rootURL;
+	private String currentUser;
 	
 	/**
 	 * Creates an instance of helper functions for Pokemon Showdown automation
@@ -23,6 +24,7 @@ public class ShowdownHelper extends Helper {
 	public ShowdownHelper(WebDriver driver, String rootURL) {
 		super(driver);
 		this.rootURL = rootURL;
+		this.currentUser = "";
 	}
 	
 	/**
@@ -32,6 +34,7 @@ public class ShowdownHelper extends Helper {
 	public ShowdownHelper(WebDriver driver) {
 		super(driver);
 		rootURL = "http://play.pokemonshowdown.com";
+		this.currentUser = "";
 	}
 	
 	/**
@@ -53,13 +56,13 @@ public class ShowdownHelper extends Helper {
 	/**
 	 * Logs in to Showdown with the supplied information.
 	 */
-	public void login(String username, String password) {
+	public void login(String userName, String password) {
 		By loginButtonBy = By.xpath("(//button[@onclick=\"return rooms['lobby'].formRename()\"])[595]");
 		waitForElementPresent(loginButtonBy);
 		
 	    driver.findElement(loginButtonBy).click();
 	    driver.findElement(By.id("overlay_name")).clear();
-	    driver.findElement(By.id("overlay_name")).sendKeys(username);
+	    driver.findElement(By.id("overlay_name")).sendKeys(userName);
 	    driver.findElement(By.cssSelector("button[type=\"submit\"]")).click();
 	    
 	    waitForElementPresent(By.id("overlay_password"));
@@ -67,6 +70,7 @@ public class ShowdownHelper extends Helper {
 	    driver.findElement(By.id("overlay_password")).clear();
 	    driver.findElement(By.id("overlay_password")).sendKeys(password);
 	    driver.findElement(By.cssSelector("button[type=\"submit\"]")).click();
+	    currentUser = userName;
 	}
 	
 	/**
@@ -84,7 +88,37 @@ public class ShowdownHelper extends Helper {
 		clickAt(By.id("lobby-gobutton"));
 	}
 	
+	/**
+	 * Waits for a battle to begin. Times out after two minutes.
+	 */
+	public void waitForBattleStart() {
+		waitForElementPresent(By.cssSelector("div.moveselect"), 120);
+		sleep(500);
+	}
+	
+	/**
+	 * Gets the current player's name.
+	 * @return String - our user name,  or empty string if not logged in.
+	 */
+	public String getUserName() {
+		return currentUser;
+	}
+	
 	//// Battle functions
+	
+	/**
+	 * Gets the opponent's user name.
+	 * @return Opponent's user name, or empty string on failure.
+	 */
+	public String getOpponentName() {
+		List<WebElement> allElements = driver.findElements(By.cssSelector("div.trainer"));
+		for (WebElement e : allElements) {
+			if (!e.getText().equals(getUserName())) {
+				return e.getText();
+			}
+		}
+		return "";
+	}
 	
 	/**
 	 * Leaves the current battle
@@ -105,6 +139,29 @@ public class ShowdownHelper extends Helper {
 	 */
 	public void kickInactivePlayer() {
 		clickAt(By.cssSelector("div.replay-controls > button"));
+	}
+	
+	/**
+	 * Sends a message in a battle and logs it in the console.
+	 * @param message The message to send
+	 */
+	public void sendMessage(String message) {
+		sendMessage(message, true);
+	}
+	
+	/**
+	 * Sends a message in a battle
+	 * @param message The message to send
+	 * @param logToConsole If true, the message will also be written to the console.
+	 */
+	public void sendMessage(String message, boolean logToConsole) {
+		WebElement chatbox = driver.findElement(By.xpath("(//textarea[@type='text'])[2]"));
+		chatbox.clear();
+		chatbox.sendKeys(message);
+		chatbox.sendKeys(Keys.RETURN);
+		if (logToConsole) {
+			System.out.println("[BATTLE LOG] " + getUserName() + ": " + message);
+		}
 	}
 	
 	//// Battle log functions
@@ -182,6 +239,16 @@ public class ShowdownHelper extends Helper {
 		}
 	}
 	
+	private WebElement getTrainerDiv(String owner) {
+		List<WebElement> allElements = driver.findElements(By.cssSelector("div.trainer"));
+		for (WebElement e : allElements) {
+			if (e.getText().equals(owner)) {
+				return e;
+			}
+		}
+		return null;
+	}
+	
 	/**
 	 * Attempts to find the team of the specified owner.
 	 * First it will check the announcement in the log of the team that you see in most formats.
@@ -189,16 +256,34 @@ public class ShowdownHelper extends Helper {
 	 * NOTE, in the second case, if nicknames are present, they are NOT resolved to actual names. It is
 	 * up to you to ensure that the names retrieved are real names.
 	 * @param owner Name of team's owner
-	 * @return String Array - Pokemon names, or empty array on failure.
+	 * @return String List - Pokemon names, or empty list on failure.
 	 */
-	public String[] getTeam(String owner) {
+	public List<String> getTeam(String owner) {
 		Pattern p = Pattern.compile(owner + "'s team:\n(.+ / +?.*?)$", Pattern.MULTILINE);
 		Matcher m = p.matcher(getBattleLogText());
 		if (m.find()) {
-			return m.group(1).split(" / ");
+			return Arrays.asList(m.group(1).split(" / "));
 		}
-		// TODO: second case
+
 		ArrayList<String> team = new ArrayList<String>(6);
-		return team.toArray(new String[0]);
+
+		WebElement trainerDiv = getTrainerDiv(owner);
+		if (trainerDiv == null) {
+			return team;
+		}
+		
+		List<WebElement> pokeIcons = trainerDiv.findElements(By.cssSelector("span.pokemonicon"));
+		for (WebElement e : pokeIcons) {
+			String name = e.getAttribute("title");
+			if (name.equals("Not revealed")) {
+				continue;
+			}
+			int bracketIdx = name.indexOf(" (");
+			if (bracketIdx != -1) {
+				name = name.substring(0, bracketIdx);
+			}
+			team.add(name);
+		}
+		return team;
 	}
 }

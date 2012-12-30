@@ -1,4 +1,7 @@
 package seleniumhelper;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.openqa.selenium.*;
 import org.openqa.selenium.support.ui.*;
 
@@ -24,7 +27,11 @@ public class Helper {
 	}
 	
 	public void waitForElementPresent(final By by) {
-		(new WebDriverWait(driver, 10)).until(new ExpectedCondition<Boolean>() {
+		waitForElementPresent(by, 10);
+	}
+	
+	public void waitForElementPresent(final By by, final int timeOutSeconds) {
+		(new WebDriverWait(driver, timeOutSeconds)).until(new ExpectedCondition<Boolean>() {
             public Boolean apply(WebDriver d) {
                 return isElementPresent(by);
             }
@@ -36,15 +43,12 @@ public class Helper {
 	}
 	
 	public void dropdownSelect(By dropdown, String option) {
-		WebElement dd = driver.findElement(dropdown);
-		dd.click();
-		sleep(500);
-		(new Select(dd)).selectByVisibleText(option);
+		Select dd = new Select(driver.findElement(dropdown));
+		dd.selectByVisibleText(option);
 	}
 	
 	public void dropdownSelect(By dropdown, int option) {
 		WebElement dd = driver.findElement(dropdown);
-		dd.click();
 		sleep(500);
 		(new Select(dd)).selectByIndex(option);
 	}
@@ -55,6 +59,27 @@ public class Helper {
 		}
 		catch (InterruptedException e) {
 			e.printStackTrace();
+		}
+	}
+	
+	public List<WebElement> findElementsContainingText(By by, String text) {
+		List<WebElement> allElements = driver.findElements(by);
+		List<WebElement> elementsContainingText = new ArrayList<WebElement>();
+		for (WebElement e : allElements) {
+			if (e.getText().contains(text)) {
+				elementsContainingText.add(e);
+			}
+		}
+		return elementsContainingText;
+	}
+	
+	public WebElement findElementContainingText(By by, String text) {
+		List<WebElement> elements = findElementsContainingText(by, text);
+		if (elements.size() < 1) {
+			return null;
+		}
+		else {
+			return elements.get(0);
 		}
 	}
 }
