@@ -5,15 +5,19 @@ import seleniumhelper.ShowdownHelper;
 
 public class Example  {
     public static void main(String[] args) {
-    	ShowdownHelper showdown = new ShowdownHelper(null);
-        System.out.println("Should be 11:" + showdown.getCurrentTurn());
+    	WebDriver driver = new FirefoxDriver();
         
-        System.out.println("Should be Heatran:" + showdown.getPokemonForNickname("Guns n Roses", "Serpentine"));
+        ShowdownHelper showdown = new ShowdownHelper(driver);
+        showdown.open();
+        showdown.login();
+        /*showdown.findBattle("Random Battle", "");
         
-        System.out.println("Guns n Roses's team:");
-        String[] team = showdown.getTeam("Guns n Roses");
+        //waitforbattlestart
+        
+        System.out.println("Our team:");
+        String[] team = showdown.getTeam("geniusecttest");
         for (int i = 0; i < team.length; ++i) {
         	System.out.println(team[i]);
-        }
+        }*/
     }
 }

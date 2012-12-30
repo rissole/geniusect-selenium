@@ -1,7 +1,6 @@
 package seleniumhelper;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.io.File;
 import java.util.*;
 
 import org.openqa.selenium.*;
@@ -148,17 +147,8 @@ public class ShowdownHelper extends Helper {
 	 * @return String - battle log text, including new lines.
 	 */
 	public String getBattleLogText() {
-		String text = "";
-		try {
-			Scanner r = new Scanner(new File("battlesample.log"));
-			while (r.hasNextLine()) {
-				text += r.nextLine() + "\n";
-			}
-			return text;
-		}
-		catch (Exception e) {
-			return "File not found";
-		}
+		WebElement battleLog = driver.findElement(By.cssSelector("div.battle-log"));
+		return battleLog.getText();
 	}
 	
 	/**
@@ -211,9 +201,4 @@ public class ShowdownHelper extends Helper {
 		ArrayList<String> team = new ArrayList<String>(6);
 		return team.toArray(new String[0]);
 	}
-	
-	/*public String getBattleLogText() {
-		WebElement battleLog = driver.findElement(By.cssSelector("div.battle-log"));
-		return battleLog.getText();
-	}*/
 }
