@@ -193,21 +193,6 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	/**
-	 * Attempts to search the log and retrieve the actual name of a Pokemon given a nickname and owner.
-	 * @param ownerName Name of the player that owns this Pokemon.
-	 * @param nickname The nickname of the Pokemon.
-	 * @return String - The Pokemon's real name, or empty string on failure.
-	 */
-	public String getPokemonForNickname(String ownerName, String nickname) {
-		Pattern p = Pattern.compile(ownerName + " sent out " + nickname + " \\((.+)\\)!", Pattern.MULTILINE);
-		Matcher m = p.matcher(getBattleLogText());
-		if (m.find()) {
-			return m.group(1);
-		}
-		return "";
-	}
-	
-	/**
 	 * Attempts to find the team of the specified owner.
 	 * First it will check the announcement in the log of the team that you see in most formats.
 	 * If that fails, it will scan the owner's team icons to try and find as many as it can that way.
