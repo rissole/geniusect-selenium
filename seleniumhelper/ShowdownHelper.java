@@ -49,13 +49,6 @@ public class ShowdownHelper extends Helper {
 	//// Lobby functions
 	
 	/**
-	 * Logs in with default test account details.
-	 */
-	public void login() {
-		login("geniusecttest", "test123");
-	}
-	
-	/**
 	 * Logs in to Showdown with the supplied information.
 	 */
 	public void login(String userName, String password) {

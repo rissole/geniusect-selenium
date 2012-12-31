@@ -1,4 +1,7 @@
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.List;
+import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
 
 import org.openqa.selenium.WebDriver;
@@ -7,14 +10,15 @@ import org.openqa.selenium.firefox.FirefoxDriver;
 import seleniumhelper.ShowdownHelper;
 
 public class Example  {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws FileNotFoundException {
     	WebDriver driver = new FirefoxDriver();
     	// wait up to 10 seconds for elements to load
     	driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
         
         ShowdownHelper showdown = new ShowdownHelper(driver, "http://play.pokemonshowdown.com/~~rissole-showdown.herokuapp.com:80");
         showdown.open();
-        showdown.login();
+        String[] userPass = loadUserPass();
+        showdown.login(userPass[0], userPass[1]);
         showdown.findBattle("Random Battle", "");
         
         showdown.waitForBattleStart();
@@ -37,7 +41,18 @@ public class Example  {
         }
         System.out.println();
         showdown.sendMessage("Heh.");
+        
+        //TODO: test waitForNextTurn, doMove, getMoves.
+        
         showdown.surrender();
         showdown.leaveBattle();
+    }
+    
+    public static String[] loadUserPass() throws FileNotFoundException {
+    	String[] ret = new String[2];
+		Scanner s = new Scanner(new File("bin/account.txt"));
+		ret[0] = s.nextLine();
+		ret[1] = s.nextLine();
+		return ret;    	
     }
 }
