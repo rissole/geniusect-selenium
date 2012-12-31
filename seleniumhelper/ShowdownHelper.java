@@ -50,6 +50,7 @@ public class ShowdownHelper extends Helper {
 	
 	/**
 	 * Logs in to Showdown with the supplied information.
+	 * Make password empty string if you wish to use an unregistered account.
 	 */
 	public void login(String userName, String password) {
 		By loginButtonBy = By.xpath("//button[contains(text(),'Choose name')]");
@@ -60,11 +61,13 @@ public class ShowdownHelper extends Helper {
 	    driver.findElement(By.id("overlay_name")).sendKeys(userName);
 	    driver.findElement(By.cssSelector("button[type=\"submit\"]")).click();
 	    
-	    waitForElementPresent(By.id("overlay_password"));
-	    
-	    driver.findElement(By.id("overlay_password")).clear();
-	    driver.findElement(By.id("overlay_password")).sendKeys(password);
-	    driver.findElement(By.cssSelector("button[type=\"submit\"]")).click();
+	    if (password.length() > 0) {
+		    waitForElementPresent(By.id("overlay_password"));
+		    
+		    driver.findElement(By.id("overlay_password")).clear();
+		    driver.findElement(By.id("overlay_password")).sendKeys(password);
+		    driver.findElement(By.cssSelector("button[type=\"submit\"]")).click();
+	    }
 	    currentUser = userName;
 	}
 	
