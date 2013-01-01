@@ -1,9 +1,11 @@
 package seleniumhelper;
+import java.io.File;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.*;
 
 import org.openqa.selenium.*;
+import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
@@ -200,10 +202,29 @@ public class ShowdownHelper extends Helper {
 		List<WebElement> moveButtons = moveMenu.findElements(By.tagName("button"));
 		List<String> moves = new ArrayList<String>(4);
 		for (WebElement e : moveButtons) {
-			moves.add(e.getText());
+			moves.add(substringToFirst(e.getText(), 0, "\n"));
 		}
 		return moves;
 	}
+	
+	/**
+	 * Gets the PP remaining for the move specified.
+	 * @return PP remaining for specified move, throws exception if we don't have that move.
+	 * @throws Exception 
+	 */
+	public int getMoveRemainingPP(String move) throws Exception {
+		WebElement moveMenu = driver.findElement(By.cssSelector("div.movemenu"));
+		try {
+			WebElement moveButton = moveMenu.findElement(By.xpath("//button[contains(text(),'"+move+"')]"));
+			String[] moveInfo = moveButton.getText().split("\n");
+			// moveInfo = [move name, type, pp/maxpp]
+			return Integer.parseInt(substringToFirst(moveInfo[2], 0, "/"));
+		}
+		catch (Exception e) {
+			throw new Exception("You do not have the move '"+move+"'");
+		}
+	}
+	
 	
 	//// Battle log functions
 	
@@ -269,14 +290,33 @@ public class ShowdownHelper extends Helper {
 	 * @return String - last turn text, or empty string if a turn hasn't been completed yet.
 	 */
 	public String getLastTurnText() {
+		return getTurnText(getCurrentTurn()-1);
+	}
+	
+	/**
+	 * Gets the text of the specified turn.
+	 * @param turn The turn. Set this to 0 to get the text that appears before turn 1.
+	 * @return String - the text from that turn, including "Turn (turn number)" heading
+	 */
+	public String getTurnText(int turn) {
+		if (turn == getCurrentTurn()) {
+			return getCurrentTurnText();
+		}
+		
 		String battleText = getBattleLogText();
-		int currentTurnIdx = battleText.lastIndexOf("Turn");
-		int lastTurnIdx = battleText.lastIndexOf("Turn", currentTurnIdx-4);
-		if (lastTurnIdx == -1) {
+		int turnIdx;
+		if (turn == 0) {
+			turnIdx = battleText.indexOf("Turn 1");
+			return battleText.substring(0, turnIdx);
+		}
+		String turnStr = "Turn " + turn;
+		turnIdx = battleText.indexOf(turnStr);
+		int nextTurnIdx = battleText.indexOf("Turn", turnIdx+turnStr.length());
+		if (turnIdx == -1 || nextTurnIdx == -1) {
 			return "";
 		}
 		else {
-			return battleText.substring(lastTurnIdx, currentTurnIdx);
+			return battleText.substring(turnIdx, nextTurnIdx);
 		}
 	}
 	
@@ -338,5 +378,54 @@ public class ShowdownHelper extends Helper {
                 return getBattleLogText().contains(message);
             }
         });
+	}
+	
+	/**
+	 * Takes an ambiguous name string and returns the pokemon name.
+	 * @param fullname either "pokemon name" or "nickname (pokemon name)"
+	 * @return The original string if it doesn't contain brackets, else what is inside the brackets.
+	 */
+	private String getNameFromPossibleNickname(String fullname) {
+		if (!fullname.contains("(")) {
+			return fullname;
+		}
+		else {
+			int idx = fullname.indexOf("(");
+			return substringToFirst(fullname,idx+1,")");
+		}
+	}
+	
+	/**
+	 * Returns what Pokemon was on owner's side of the field at the start of turn.
+	 * @param owner Whose side of the field we are checking
+	 * @param turn Which turn we are interested in
+	 * @return String - Pokemon name, empty string on failure.
+	 */
+	public String getCurrentPokemonAtTurn(String owner, int turn) {
+		// special case, find first released.
+		String sentOutStr = owner + " sent out ";
+		if (turn == 0) {
+			String text = getBattleLogText();
+			int idx = text.indexOf(sentOutStr);
+			return getNameFromPossibleNickname(substringToFirst(text,idx+sentOutStr.length(),"!\n"));
+		}
+		while (turn >= 0) {
+			--turn;
+			String text = getTurnText(turn);
+			int idx = text.lastIndexOf(sentOutStr);
+			if (idx != -1) {
+				return getNameFromPossibleNickname(substringToFirst(text,idx+sentOutStr.length(),"!\n"));
+			}
+		}
+		return "";
+	}
+	
+	/**
+	 * Returns the Pokemon currently on owner's side of the field.
+	 * @param owner Whose side of the field we are checking
+	 * @return String - Pokemon name, empty string on failure.
+	 */
+	public String getCurrentPokemon(String owner) {
+		return getCurrentPokemonAtTurn(owner, getCurrentTurn());
 	}
 }

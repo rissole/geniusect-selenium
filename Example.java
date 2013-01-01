@@ -10,12 +10,12 @@ import org.openqa.selenium.firefox.FirefoxDriver;
 import seleniumhelper.ShowdownHelper;
 
 public class Example  {
-    public static void main(String[] args) throws FileNotFoundException {
+    public static void main(String[] args) throws Exception {
     	WebDriver driver = new FirefoxDriver();
     	// wait up to 10 seconds for elements to load
     	driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
         
-        ShowdownHelper showdown = new ShowdownHelper(driver, "http://play.pokemonshowdown.com/~~rissole-showdown.herokuapp.com:80");
+        ShowdownHelper showdown = new ShowdownHelper(driver);
         showdown.open();
         String[] userPass = loadUserPass();
         showdown.login(userPass[0], userPass[1]);
@@ -40,9 +40,19 @@ public class Example  {
         		System.out.print(", ");
         }
         System.out.println();
-        showdown.sendMessage("Heh.");
         
-        //TODO: test waitForNextTurn, doMove, getMoves.
+        System.out.println(showdown.getCurrentTurnText());
+        System.out.println(showdown.getLastTurnText());
+        System.out.println(showdown.getCurrentPokemon(showdown.getUserName()));
+        System.out.println(showdown.getCurrentPokemon(showdown.getOpponentName()));
+        
+        //TODO: test waitForNextTurn, doMove.
+        
+        System.out.println("Moves:");
+        printlist(showdown.getMoves());
+        for (String move : showdown.getMoves()) {
+        	System.out.println(move + ": " + showdown.getMoveRemainingPP(move) + " PP");
+        }
         
         showdown.surrender();
         showdown.leaveBattle();
@@ -54,5 +64,14 @@ public class Example  {
 		ret[0] = s.nextLine();
 		ret[1] = s.nextLine();
 		return ret;    	
+    }
+    
+    public static <T> void printlist(List<T> l) {
+    	for (int i = 0; i < l.size(); ++i) {
+        	System.out.print(l.get(i).toString());
+        	if (i != l.size()-1)
+        		System.out.print(", ");
+        }
+    	System.out.println();
     }
 }
