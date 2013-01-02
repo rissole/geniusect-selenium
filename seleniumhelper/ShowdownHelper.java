@@ -126,6 +126,10 @@ public class ShowdownHelper extends Helper {
 	public void leaveBattle() {
 		WebElement currentTab = driver.findElement(By.xpath("//a[contains(@class, 'tab battletab cur')]"));
 		currentTab.findElement(By.xpath("//span[contains(@class, 'close')]")).click();
+		sleep(500);
+		if (isElementPresent(By.cssSelector("button[type=\"submit\"]"))) {
+			clickAt(By.cssSelector("button[type=\"submit\"]"));
+		}
 	}
 	
 	/**

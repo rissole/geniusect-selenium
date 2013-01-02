@@ -41,10 +41,12 @@ public class Example  {
         }
         System.out.println();
         
+        System.out.println("----------------");
         System.out.println(showdown.getCurrentTurnText());
+        System.out.println("----------------");
         System.out.println(showdown.getLastTurnText());
-        System.out.println(showdown.getCurrentPokemon(showdown.getUserName()));
-        System.out.println(showdown.getCurrentPokemon(showdown.getOpponentName()));
+        System.out.println("----------------");
+        System.out.println(showdown.getCurrentPokemon("Opponent's Pokemon: "+showdown.getCurrentPokemon(showdown.getOpponentName())));
         
         //TODO: test waitForNextTurn, doMove.
         
@@ -54,7 +56,6 @@ public class Example  {
         	System.out.println(move + ": " + showdown.getMoveRemainingPP(move) + " PP");
         }
         
-        showdown.surrender();
         showdown.leaveBattle();
     }
     
