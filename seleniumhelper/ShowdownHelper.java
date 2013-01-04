@@ -524,6 +524,9 @@ public class ShowdownHelper extends Helper {
 	 */
 	public String getCurrentPokemonAtTurn(String owner, int turn, boolean resolveNickname) {
 		String sentOutStr = owner + " sent out ";
+		if (turn == 0) {
+			turn = 1;
+		}
 		while (turn >= 0) {
 			--turn;
 			String text = getTurnText(turn);
