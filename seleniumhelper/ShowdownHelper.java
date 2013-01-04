@@ -209,10 +209,10 @@ public class ShowdownHelper extends Helper {
 			return TurnEndStatus.LOST;
 		}
 		else {
-			if (whatdoText.equals("Switch " + getCurrentPokemon(false) + " to:")) {
+			if (whatdoText.contains("Switch " + getCurrentPokemon(false) + " to:")) {
 				return TurnEndStatus.SWITCH;
 			}
-			else if (whatdoText.equals("What will " + getCurrentPokemon(false) + " do? ")) {
+			else if (whatdoText.contains("What will " + getCurrentPokemon(false) + " do? ")) {
 				return TurnEndStatus.ATTACK;
 			}
 		}
@@ -272,8 +272,11 @@ public class ShowdownHelper extends Helper {
 	 * @param byNickname Set to false to switch by species name.
 	 * @throws Exception if the specified Pokemon can't be found
 	 */
-	public void switchTo(String pokemon, boolean byNickname) throws Exception {
+	public void switchTo(String pokemon, boolean byNickname) throws NoSuchChoiceException, IsTrappedException {
 		WebElement switchToDiv = driver.findElement(By.cssSelector("div.switchmenu"));
+		if (isTrapped()) {
+			throw new IsTrappedException();
+		}
 		try {
 			if (byNickname) {
 				WebElement pokeButton = switchToDiv.findElement(By.xpath("//button[contains(text(),'"+pokemon+"')]"));
@@ -285,7 +288,7 @@ public class ShowdownHelper extends Helper {
 			}
 		}
 		catch (Exception e) {
-			throw new Exception("You do not have the Pokemon '"+pokemon+"'");
+			throw new NoSuchChoiceException("You do not have the Pokemon '"+pokemon+"'");
 		}
 	}
 	
@@ -293,13 +296,25 @@ public class ShowdownHelper extends Helper {
 	 * Switches to the Pokemon in slot specified
 	 * @param slot It's the slot
 	 */
-	public void switchTo(int slot) {
+	public void switchTo(int slot) throws NoSuchChoiceException, IsTrappedException {
+		if (isTrapped()) {
+			throw new IsTrappedException();
+		}
 		WebElement switchToDiv = driver.findElement(By.cssSelector("div.switchmenu"));
 		List<WebElement> buttons = switchToDiv.findElements(By.tagName("button"));
 		if (slot < 0 || slot >= buttons.size()) {
-			return;
+			throw new NoSuchChoiceException("Cannot swap to slot " + slot);
 		}
 		buttons.get(slot).click();
+	}
+	
+	/**
+	 * Returns whether the current Pokemon is trapped.
+	 * @return True if cannot switch, false otherwise.
+	 */
+	public boolean isTrapped() {
+		WebElement switchToDiv = driver.findElement(By.cssSelector("div.switchmenu"));
+		return switchToDiv.getText().equals("You are trapped and cannot switch!");
 	}
 	
 	/**

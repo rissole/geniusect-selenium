@@ -42,7 +42,7 @@ public class Example  {
         }
         System.out.println();
         
-        System.err.println("Current turn: " + showdown.getCurrentTurn());
+        System.out.println("Current turn: " + showdown.getCurrentTurn());
         System.out.println("-Current turn---------------");
         System.out.println(showdown.getCurrentTurnText());
         System.out.println("-Last turn----------");
@@ -56,11 +56,11 @@ public class Example  {
         	System.out.println(move + ": " + showdown.getMoveRemainingPP(move) + " PP");
         }
         
-        String switchingTo = ourTeam.get((new Random()).nextInt(6));
+        String switchingTo = ourTeam.get(1+(new Random()).nextInt(5));
         System.out.println("Switching to " + switchingTo);
         showdown.switchTo(switchingTo,false);
         
-        System.out.println(showdown.waitForNextTurn(0));
+        System.err.println(showdown.waitForNextTurn(0));
         
         System.out.println("Current Pokemon now (should be "+switchingTo+"): "+showdown.getCurrentPokemon(false));
         
