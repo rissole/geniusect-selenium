@@ -256,7 +256,15 @@ public class ShowdownHelper extends Helper {
 		if (cTT == "") {
 			return 0;
 		}
-		String turnString = substringToFirst(cTT, 5, "\n");
+		
+		String turnString = "";
+		if (Pattern.matches("^Turn (\\d+)$", cTT)) {
+			turnString = cTT.substring(5);
+		}
+		else {
+			turnString = substringToFirst(cTT, 5, "\n");
+		}
+		
 		try {
 			return Integer.parseInt(turnString);
 		}
@@ -280,7 +288,7 @@ public class ShowdownHelper extends Helper {
 	 */
 	public String getCurrentTurnText() {
 		String battleText = getBattleLogText();
-		int currentTurnIdx = battleText.lastIndexOf("Turn");
+		int currentTurnIdx = battleText.lastIndexOf("Turn ");
 		if (currentTurnIdx == -1) {
 			return "";
 		}
@@ -291,6 +299,7 @@ public class ShowdownHelper extends Helper {
 	
 	/**
 	 * Gets the text of the last turn we were in.
+	 * Turn 0 is considered to be the initial announcement of team, format, etc.
 	 * @return String - last turn text, or empty string if a turn hasn't been completed yet.
 	 */
 	public String getLastTurnText() {
@@ -299,7 +308,7 @@ public class ShowdownHelper extends Helper {
 	
 	/**
 	 * Gets the text of the specified turn.
-	 * @param turn The turn. Set this to 0 to get the text that appears before turn 1.
+	 * @param turn The turn. Turn 0 is considered to be the initial announcement of team, format, etc.
 	 * @return String - the text from that turn, including "Turn (turn number)" heading
 	 */
 	public String getTurnText(int turn) {

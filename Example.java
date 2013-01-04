@@ -41,9 +41,10 @@ public class Example  {
         }
         System.out.println();
         
-        System.out.println("----------------");
+        System.err.println("Current turn: " + showdown.getCurrentTurn());
+        System.out.println("-Current turn---------------");
         System.out.println(showdown.getCurrentTurnText());
-        System.out.println("----------------");
+        System.out.println("-Last turn----------");
         System.out.println(showdown.getLastTurnText());
         System.out.println("----------------");
         System.out.println(showdown.getCurrentPokemon("Opponent's Pokemon: "+showdown.getCurrentPokemon(showdown.getOpponentName())));
