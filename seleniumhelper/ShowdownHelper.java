@@ -222,15 +222,15 @@ public class ShowdownHelper extends Helper {
 	/**
 	 * Chooses the specified move to attack with.
 	 * @param moveName The move to use.
-	 * @throws Exception if the specified move can't be found 
+	 * @throws NoSuchChoiceException if the specified move can't be found 
 	 */
-	public void doMove(String moveName) throws Exception {
+	public void doMove(String moveName) throws NoSuchChoiceException {
 		WebElement moveMenu = driver.findElement(By.cssSelector("div.movemenu"));
 		try {
 			moveMenu.findElement(By.xpath("//button[text()='"+moveName+"']")).click();
 		}
 		catch (Exception e) {
-			throw new Exception("You do not have the move '"+moveName+"'");
+			throw new NoSuchChoiceException("You do not have the move '"+moveName+"'");
 		}
 	}
 	
@@ -251,9 +251,9 @@ public class ShowdownHelper extends Helper {
 	/**
 	 * Gets the PP remaining for the move specified.
 	 * @return PP remaining for specified move, throws exception if we don't have that move.
-	 * @throws Exception if the specified move can't be found
+	 * @throws NoSuchChoiceException if the specified move can't be found
 	 */
-	public int getMoveRemainingPP(String move) throws Exception {
+	public int getMoveRemainingPP(String move) throws NoSuchChoiceException {
 		WebElement moveMenu = driver.findElement(By.cssSelector("div.movemenu"));
 		try {
 			WebElement moveButton = moveMenu.findElement(By.xpath("//button[contains(text(),'"+move+"')]"));
@@ -262,7 +262,7 @@ public class ShowdownHelper extends Helper {
 			return Integer.parseInt(substringToFirst(moveInfo[2], 0, "/"));
 		}
 		catch (Exception e) {
-			throw new Exception("You do not have the move '"+move+"'");
+			throw new NoSuchChoiceException("You do not have the move '"+move+"'");
 		}
 	}
 	
@@ -270,7 +270,8 @@ public class ShowdownHelper extends Helper {
 	 * Switches to the specified Pokemon.
 	 * @param pokemon The name of the Pokemon we want to switch to.
 	 * @param byNickname Set to false to switch by species name.
-	 * @throws Exception if the specified Pokemon can't be found
+	 * @throws NoSuchChoiceException if the specified Pokemon can't be found
+	 * @throws IsTrappedException if we are trapped
 	 */
 	public void switchTo(String pokemon, boolean byNickname) throws NoSuchChoiceException, IsTrappedException {
 		WebElement switchToDiv = driver.findElement(By.cssSelector("div.switchmenu"));
@@ -294,7 +295,9 @@ public class ShowdownHelper extends Helper {
 	
 	/**
 	 * Switches to the Pokemon in slot specified
-	 * @param slot It's the slot
+	 * @param slot It's the slot (0-5)
+	 * @throws NoSuchChoiceException if the specified slot is invalid
+	 * @throws IsTrappedException if we are trapped
 	 */
 	public void switchTo(int slot) throws NoSuchChoiceException, IsTrappedException {
 		if (isTrapped()) {
