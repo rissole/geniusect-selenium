@@ -519,31 +519,24 @@ public class ShowdownHelper extends Helper {
 	 * Returns what Pokemon was on owner's side of the field at the start of turn.
 	 * @param owner Whose side of the field we are checking
 	 * @param turn Which turn we are interested in
-	 * * @param resolveNickname Set to false to retrieve the nickname of the Pokemon rather than species
+	 * @param resolveNickname Set to false to retrieve the nickname of the Pokemon rather than species
 	 * @return String - Pokemon name, empty string on failure.
 	 */
 	public String getCurrentPokemonAtTurn(String owner, int turn, boolean resolveNickname) {
-		// special case, find first released.
 		String sentOutStr = owner + " sent out ";
-		if (turn == 0) {
-			String text = getBattleLogText();
-			int idx = text.indexOf(sentOutStr);
-			if (resolveNickname) {
-				return getNameFromPossibleNickname(substringToFirst(text,idx+sentOutStr.length(),"!\n"));
-			}
-			else {
-				return substringToFirst(substringToFirst(text, 0, " ("), 0, "!\n");
-			}
-		}
 		while (turn >= 0) {
 			--turn;
 			String text = getTurnText(turn);
 			int idx = text.lastIndexOf(sentOutStr);
+			String nameWithPossibleNickname = substringToFirst(text,idx+sentOutStr.length(),"!\n");
 			if (idx != -1 && resolveNickname) {
-				return getNameFromPossibleNickname(substringToFirst(text,idx+sentOutStr.length(),"!\n"));
+				return getNameFromPossibleNickname(nameWithPossibleNickname);
 			}
 			else if (idx != -1) {
-				return substringToFirst(substringToFirst(text, 0, " ("), 0, "!\n");
+				if (nameWithPossibleNickname.contains("(")) {
+					return substringToFirst(nameWithPossibleNickname, 0, " (");
+				}
+				return substringToFirst(nameWithPossibleNickname, 0, "!\n");
 			}
 		}
 		return "";

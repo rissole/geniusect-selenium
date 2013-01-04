@@ -22,19 +22,22 @@ public class Example  {
         showdown.login(userPass[0], userPass[1]);
         showdown.findBattle("Random Battle", "");
         
+        // WAIT FOR BATTLE START
         showdown.waitForBattleStart();
+        String SELF = showdown.getUserName();
+        String OPP = showdown.getOpponentName();
         
-        System.out.println("My name is " + showdown.getUserName() + ", and I just started a battle.");
+        System.out.println("My name is " + SELF + ", and I just started a battle.");
         System.out.println("This is my team. There is none like it-");
-        List<String> ourTeam = showdown.getTeam(showdown.getUserName());
+        List<String> ourTeam = showdown.getTeam(SELF);
         for (int i = 0; i < ourTeam.size(); ++i) {
         	System.out.print(ourTeam.get(i));
         	if (i != ourTeam.size()-1)
         		System.out.print(", ");
         }
         System.out.println();
-        System.out.println("My hapless opponent is " + showdown.getOpponentName() + ", and this is his team; or what I know of it:");
-        List<String> team = showdown.getTeam(showdown.getOpponentName());
+        System.out.println("My hapless opponent is " + OPP + ", and this is his team; or what I know of it:");
+        List<String> team = showdown.getTeam(OPP);
         for (int i = 0; i < team.size(); ++i) {
         	System.out.print(team.get(i));
         	if (i != team.size()-1)
@@ -48,7 +51,7 @@ public class Example  {
         System.out.println("-Last turn----------");
         System.out.println(showdown.getLastTurnText());
         System.out.println("----------------");
-        System.out.println("Opponent's Pokemon: "+showdown.getCurrentPokemon(showdown.getOpponentName(), false));
+        System.out.println("Opponent's Pokemon: "+showdown.getCurrentPokemon(OPP, false));
              
         System.out.println("Moves:");
         printlist(showdown.getMoves());
@@ -63,6 +66,7 @@ public class Example  {
         System.err.println(showdown.waitForNextTurn(0));
         
         System.out.println("Current Pokemon now (should be "+switchingTo+"): "+showdown.getCurrentPokemon(false));
+        System.out.println("Original Pokemon: " + showdown.getCurrentPokemonAtTurn(SELF, 0, true));
         
         showdown.leaveBattle();
     }
