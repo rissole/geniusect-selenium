@@ -170,31 +170,68 @@ public class ShowdownHelper extends Helper {
 		}
 	}
 	
+	public enum TurnEndStatus {
+		UNKNOWN,
+		ATTACK,
+		SWITCH,
+		KICKED,
+		WON,
+		LOST
+	}
+	
 	/**
 	 * Waits for the next turn to begin or the battle to end, kicking inactive players.
 	 * @param kickAfterSeconds Clicks 'Kick inactive player' after this number of seconds. 
 	 * Set to 0 to never kick
 	 * @return Returns true if we are at the next turn, or false if the game ended (because we kicked them)
 	 */
-	public boolean waitForNextTurn(int kickAfterSeconds) {
+	public TurnEndStatus waitForNextTurn(int kickAfterSeconds) {
 		int waited = 0;
 		boolean haveWon = getBattleLogText().contains(getUserName() + " won the battle!");
-		while (!isElementPresent(By.cssSelector("div.moveselect")) && !haveWon) {
+		boolean haveLost = getBattleLogText().contains(getOpponentName() + " won the battle!");
+		while (!isElementPresent(By.cssSelector("div.whatdo")) && !haveWon && !haveLost) {
 			if (kickAfterSeconds != 0 && waited >= kickAfterSeconds) {
 				kickInactivePlayer();
 			}
 			sleep(1000);
 			waited += 1;
 		}
-		return (!haveWon);
+		String whatdoText = driver.findElement(By.cssSelector("div.whatdo")).getText();
+		if (haveWon) {
+			if (getBattleLogText().contains(getOpponentName() + " lost because of their inactivity.")) {
+				return TurnEndStatus.KICKED;
+			}
+			else {
+				return TurnEndStatus.WON;
+			}
+		}
+		else if (haveLost) {
+			return TurnEndStatus.LOST;
+		}
+		else {
+			if (whatdoText.equals("Switch " + getCurrentPokemon(false) + " to:")) {
+				return TurnEndStatus.SWITCH;
+			}
+			else if (whatdoText.equals("What will " + getCurrentPokemon(false) + " do? ")) {
+				return TurnEndStatus.ATTACK;
+			}
+		}
+		return TurnEndStatus.UNKNOWN;
 	}
 	
 	/**
 	 * Chooses the specified move to attack with.
 	 * @param moveName The move to use.
+	 * @throws Exception if the specified move can't be found 
 	 */
-	public void doMove(String moveName) {
-		clickAt(By.xpath("//button[text()='"+moveName+"']"));
+	public void doMove(String moveName) throws Exception {
+		WebElement moveMenu = driver.findElement(By.cssSelector("div.movemenu"));
+		try {
+			moveMenu.findElement(By.xpath("//button[text()='"+moveName+"']")).click();
+		}
+		catch (Exception e) {
+			throw new Exception("You do not have the move '"+moveName+"'");
+		}
 	}
 	
 	/**
@@ -214,7 +251,7 @@ public class ShowdownHelper extends Helper {
 	/**
 	 * Gets the PP remaining for the move specified.
 	 * @return PP remaining for specified move, throws exception if we don't have that move.
-	 * @throws Exception 
+	 * @throws Exception if the specified move can't be found
 	 */
 	public int getMoveRemainingPP(String move) throws Exception {
 		WebElement moveMenu = driver.findElement(By.cssSelector("div.movemenu"));
@@ -227,6 +264,58 @@ public class ShowdownHelper extends Helper {
 		catch (Exception e) {
 			throw new Exception("You do not have the move '"+move+"'");
 		}
+	}
+	
+	/**
+	 * Switches to the specified Pokemon.
+	 * @param pokemon The name of the Pokemon we want to switch to.
+	 * @param byNickname Set to false to switch by species name.
+	 * @throws Exception if the specified Pokemon can't be found
+	 */
+	public void switchTo(String pokemon, boolean byNickname) throws Exception {
+		WebElement switchToDiv = driver.findElement(By.cssSelector("div.switchmenu"));
+		try {
+			if (byNickname) {
+				WebElement pokeButton = switchToDiv.findElement(By.xpath("//button[contains(text(),'"+pokemon+"')]"));
+				pokeButton.click();
+			}
+			else {
+				// try to identify which button has the species specified. oh god lol nvm it's ez
+				switchTo(getSlotForSpecies(pokemon));
+			}
+		}
+		catch (Exception e) {
+			throw new Exception("You do not have the Pokemon '"+pokemon+"'");
+		}
+	}
+	
+	/**
+	 * Switches to the Pokemon in slot specified
+	 * @param slot It's the slot
+	 */
+	public void switchTo(int slot) {
+		WebElement switchToDiv = driver.findElement(By.cssSelector("div.switchmenu"));
+		List<WebElement> buttons = switchToDiv.findElements(By.tagName("button"));
+		if (slot < 0 || slot >= buttons.size()) {
+			return;
+		}
+		buttons.get(slot).click();
+	}
+	
+	/**
+	 * Returns the slot in which the Pokemon with the specified name is in.
+	 * @param pokemon Name of Pokemon species
+	 * @return Integer - 0-5, slot.
+	 */
+	private int getSlotForSpecies(String pokemon) {
+		JavascriptExecutor je = (JavascriptExecutor) driver;
+		for (int i = 0; i < 6; ++i) {
+			String species = (String)je.executeScript("return curRoom.battle.mySide.pokemon["+i+"].species;");
+			if (species.equals(pokemon)) {
+				return i;
+			}
+		}
+		return -1;
 	}
 	
 	
@@ -412,22 +501,31 @@ public class ShowdownHelper extends Helper {
 	 * Returns what Pokemon was on owner's side of the field at the start of turn.
 	 * @param owner Whose side of the field we are checking
 	 * @param turn Which turn we are interested in
+	 * * @param resolveNickname Set to false to retrieve the nickname of the Pokemon rather than species
 	 * @return String - Pokemon name, empty string on failure.
 	 */
-	public String getCurrentPokemonAtTurn(String owner, int turn) {
+	public String getCurrentPokemonAtTurn(String owner, int turn, boolean resolveNickname) {
 		// special case, find first released.
 		String sentOutStr = owner + " sent out ";
 		if (turn == 0) {
 			String text = getBattleLogText();
 			int idx = text.indexOf(sentOutStr);
-			return getNameFromPossibleNickname(substringToFirst(text,idx+sentOutStr.length(),"!\n"));
+			if (resolveNickname) {
+				return getNameFromPossibleNickname(substringToFirst(text,idx+sentOutStr.length(),"!\n"));
+			}
+			else {
+				return substringToFirst(substringToFirst(text, 0, " ("), 0, "!\n");
+			}
 		}
 		while (turn >= 0) {
 			--turn;
 			String text = getTurnText(turn);
 			int idx = text.lastIndexOf(sentOutStr);
-			if (idx != -1) {
+			if (idx != -1 && resolveNickname) {
 				return getNameFromPossibleNickname(substringToFirst(text,idx+sentOutStr.length(),"!\n"));
+			}
+			else if (idx != -1) {
+				return substringToFirst(substringToFirst(text, 0, " ("), 0, "!\n");
 			}
 		}
 		return "";
@@ -436,9 +534,28 @@ public class ShowdownHelper extends Helper {
 	/**
 	 * Returns the Pokemon currently on owner's side of the field.
 	 * @param owner Whose side of the field we are checking
+	 * @param resolveNickname Set to false to retrieve the nickname of the Pokemon rather than species
 	 * @return String - Pokemon name, empty string on failure.
 	 */
-	public String getCurrentPokemon(String owner) {
-		return getCurrentPokemonAtTurn(owner, getCurrentTurn());
+	public String getCurrentPokemon(String owner, boolean resolveNickname) {
+		return getCurrentPokemonAtTurn(owner, getCurrentTurn(), resolveNickname);
+	}
+	
+	/**
+	 * Returns the Pokemon currently on our side of the field.
+	 * @param resolveNickname Set to false to retrieve the nickname of the Pokemon rather than species
+	 * @return String - Pokemon name, empty string on failure.
+	 */
+	public String getCurrentPokemon(boolean resolveNickname) {
+		return getCurrentPokemonAtTurn(getUserName(), getCurrentTurn(), resolveNickname);
+	}
+	
+	/**
+	 * Returns the Pokemon currently on opponent's side of the field.
+	 * @param resolveNickname Set to false to retrieve the nickname of the Pokemon rather than species
+	 * @return String - Pokemon name, empty string on failure.
+	 */
+	public String getCurrentOpponentPokemon(boolean resolveNickname) {
+		return getCurrentPokemonAtTurn(getOpponentName(), getCurrentTurn(), resolveNickname);
 	}
 }
