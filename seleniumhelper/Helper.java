@@ -82,4 +82,8 @@ public class Helper {
 			return elements.get(0);
 		}
 	}
+	
+	public WebDriver getDriver() {
+		return driver;
+	}
 }

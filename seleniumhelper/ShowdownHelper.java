@@ -55,10 +55,9 @@ public class ShowdownHelper extends Helper {
 	 * Make password empty string if you wish to use an unregistered account.
 	 */
 	public void login(String userName, String password) {
-		By loginButtonBy = By.xpath("//button[contains(text(),'Choose name')]");
-		waitForElementPresent(loginButtonBy, 20);
+		waitForElementPresent(By.xpath("//button[contains(text(),'Choose name')]"), 20);
 		
-	    driver.findElement(loginButtonBy).click();
+	    driver.findElement(By.xpath("//button[contains(text(),'Choose name')]")).click();
 	    driver.findElement(By.id("overlay_name")).clear();
 	    driver.findElement(By.id("overlay_name")).sendKeys(userName);
 	    driver.findElement(By.cssSelector("button[type=\"submit\"]")).click();
@@ -92,7 +91,7 @@ public class ShowdownHelper extends Helper {
 	 * Waits for a battle to begin. Times out after two minutes.
 	 */
 	public void waitForBattleStart() {
-		waitForElementPresent(By.cssSelector("div.moveselect"), 120);
+		waitForElementPresent(By.cssSelector("div.whatdo"), 120);
 		sleep(500);
 	}
 	
@@ -192,6 +191,7 @@ public class ShowdownHelper extends Helper {
 		while (!isElementPresent(By.cssSelector("div.whatdo")) && !haveWon && !haveLost) {
 			if (kickAfterSeconds != 0 && waited >= kickAfterSeconds) {
 				kickInactivePlayer();
+				kickAfterSeconds = 0;
 			}
 			sleep(1000);
 			waited += 1;
@@ -212,7 +212,7 @@ public class ShowdownHelper extends Helper {
 			if (whatdoText.contains("Switch " + getCurrentPokemon(false) + " to:")) {
 				return TurnEndStatus.SWITCH;
 			}
-			else if (whatdoText.contains("What will " + getCurrentPokemon(false) + " do? ")) {
+			else if (whatdoText.contains("What will " + getCurrentPokemon(false) + " do?")) {
 				return TurnEndStatus.ATTACK;
 			}
 		}
@@ -501,8 +501,8 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	/**
-	 * Takes an ambiguous name string and returns the pokemon name.
-	 * @param fullname either "pokemon name" or "nickname (pokemon name)"
+	 * Takes an ambiguous name string and returns the Pokemon name.
+	 * @param fullname either "Pokemon name" or "nickname (Pokemon name)"
 	 * @return The original string if it doesn't contain brackets, else what is inside the brackets.
 	 */
 	private String getNameFromPossibleNickname(String fullname) {
@@ -546,30 +546,47 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	/**
-	 * Returns the Pokemon currently on owner's side of the field.
+	 * Returns what Pokemon was last sent out on owner's side of the field.
 	 * @param owner Whose side of the field we are checking
 	 * @param resolveNickname Set to false to retrieve the nickname of the Pokemon rather than species
 	 * @return String - Pokemon name, empty string on failure.
 	 */
 	public String getCurrentPokemon(String owner, boolean resolveNickname) {
-		return getCurrentPokemonAtTurn(owner, getCurrentTurn(), resolveNickname);
+		String side = "mySide";
+		if (owner.equals(getOpponentName())) {
+			side = "yourSide";
+		}
+		String pokeField = "name";
+		if (resolveNickname) {
+			pokeField = "species";
+		}
+		
+		String command = 
+				("if (curRoom.battle.%side.active[0] != null)\n" +
+				"	return curRoom.battle.%side.active[0].%field;\n" +
+				"else if (curRoom.battle.%side.lastPokemon != null)\n" + 
+				"	return curRoom.battle.%side.lastPokemon.%field;\n"+
+				"return '';")
+				.replace("%side",side).replace("%field",pokeField);
+		String result = (String)((JavascriptExecutor)driver).executeScript(command);
+		return result;
 	}
 	
 	/**
-	 * Returns the Pokemon currently on our side of the field.
+	 * Returns what Pokemon was last sent out on our side of the field.
 	 * @param resolveNickname Set to false to retrieve the nickname of the Pokemon rather than species
 	 * @return String - Pokemon name, empty string on failure.
 	 */
 	public String getCurrentPokemon(boolean resolveNickname) {
-		return getCurrentPokemonAtTurn(getUserName(), getCurrentTurn(), resolveNickname);
+		return getCurrentPokemon(getUserName(), resolveNickname);
 	}
 	
 	/**
-	 * Returns the Pokemon currently on opponent's side of the field.
+	 * Returns what Pokemon was last sent out on the opponent's side of the field.
 	 * @param resolveNickname Set to false to retrieve the nickname of the Pokemon rather than species
 	 * @return String - Pokemon name, empty string on failure.
 	 */
 	public String getCurrentOpponentPokemon(boolean resolveNickname) {
-		return getCurrentPokemonAtTurn(getOpponentName(), getCurrentTurn(), resolveNickname);
+		return getCurrentPokemon(getOpponentName(), resolveNickname);
 	}
 }
