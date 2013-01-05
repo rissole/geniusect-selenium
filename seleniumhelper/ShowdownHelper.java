@@ -328,7 +328,7 @@ public class ShowdownHelper extends Helper {
 	private int getSlotForSpecies(String pokemon) {
 		for (int i = 0; i < 6; ++i) {
 			String species = javascript("var p = curRoom.battle.mySide.pokemon[arguments[0]]; if (p!=null) return p.species;", i);
-			if (species.equals(pokemon)) {
+			if (pokemon.equals(species)) {
 				return i;
 			}
 		}
@@ -456,7 +456,7 @@ public class ShowdownHelper extends Helper {
 	 */
 	public List<String> getTeam(String owner) {
 		String side = "mySide";
-		if (owner == getOpponentName()) {
+		if (owner.equals(getOpponentName())) {
 			side = "yourSide";
 		}
 		List<String> team = new ArrayList<String>(6);
@@ -476,7 +476,7 @@ public class ShowdownHelper extends Helper {
 	 */
 	public List<String> getAliveTeam(String owner) {
 		String side = "mySide";
-		if (owner == getOpponentName()) {
+		if (owner.equals(getOpponentName())) {
 			side = "yourSide";
 		}
 		List<String> team = new ArrayList<String>(6);
