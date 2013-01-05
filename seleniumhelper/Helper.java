@@ -86,4 +86,8 @@ public class Helper {
 	public WebDriver getDriver() {
 		return driver;
 	}
+	
+	public String javascript(String script, Object...args) {
+		return (String)((JavascriptExecutor)driver).executeScript(script, args);
+	}
 }

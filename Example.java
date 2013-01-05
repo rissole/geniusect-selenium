@@ -60,7 +60,8 @@ public class Example  {
 	        	if (showdown.getBattleLogText().contains("gsquit")) {
 	        		break;
 	        	}
-		        String switchingTo = ourTeam.get(1+(new Random()).nextInt(5));
+	        	ourTeam = showdown.getAliveTeam(SELF);
+		        String switchingTo = ourTeam.get((new Random()).nextInt(ourTeam.size()));
 		        System.out.println("Switching to " + switchingTo);
 		        showdown.switchTo(switchingTo,false);
 		        

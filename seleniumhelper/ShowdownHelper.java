@@ -326,9 +326,8 @@ public class ShowdownHelper extends Helper {
 	 * @return Integer - 0-5, slot.
 	 */
 	private int getSlotForSpecies(String pokemon) {
-		JavascriptExecutor je = (JavascriptExecutor) driver;
 		for (int i = 0; i < 6; ++i) {
-			String species = (String)je.executeScript("return curRoom.battle.mySide.pokemon["+i+"].species;");
+			String species = javascript("var p = curRoom.battle.mySide.pokemon[arguments[0]]; if (p!=null) return p.species;", i);
 			if (species.equals(pokemon)) {
 				return i;
 			}
@@ -451,39 +450,41 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	/**
-	 * Attempts to find the team of the specified owner.
-	 * First it will check the announcement in the log of the team that you see in most formats.
-	 * If that fails, it will scan the owner's team icons to try and find as many as it can that way.
-	 * NOTE, in the second case, if nicknames are present, they are NOT resolved to actual names. It is
-	 * up to you to ensure that the names retrieved are real names.
+	 * Returns species names of Pokemon on the specified team.
 	 * @param owner Name of team's owner
-	 * @return String List - Pokemon names, or empty list on failure.
+	 * @return String List - Pokemon species names, or empty list on failure.
 	 */
 	public List<String> getTeam(String owner) {
-		Pattern p = Pattern.compile(owner + "'s team:\n(.+ / +?.*?)$", Pattern.MULTILINE);
-		Matcher m = p.matcher(getBattleLogText());
-		if (m.find()) {
-			return Arrays.asList(m.group(1).split(" / "));
+		String side = "mySide";
+		if (owner == getOpponentName()) {
+			side = "yourSide";
 		}
-
-		ArrayList<String> team = new ArrayList<String>(6);
-
-		WebElement trainerDiv = getTrainerDiv(owner);
-		if (trainerDiv == null) {
-			return team;
+		List<String> team = new ArrayList<String>(6);
+		for (int i = 0; i < 6; ++i) {
+			String poke = javascript("var p = curRoom.battle[arguments[0]].pokemon[arguments[1]]; if (p!=null) return p.species;", side, i);
+			if (poke != null) {
+				team.add(poke);
+			}
 		}
-		
-		List<WebElement> pokeIcons = trainerDiv.findElements(By.cssSelector("span.pokemonicon"));
-		for (WebElement e : pokeIcons) {
-			String name = e.getAttribute("title");
-			if (name.equals("Not revealed")) {
-				continue;
+		return team;
+	}
+	
+	/**
+	 * Returns species names of non-fainted Pokemon on the specified team.
+	 * @param owner Name of team's owner
+	 * @return String List - Pokemon species names, or empty list on failure.
+	 */
+	public List<String> getAliveTeam(String owner) {
+		String side = "mySide";
+		if (owner == getOpponentName()) {
+			side = "yourSide";
+		}
+		List<String> team = new ArrayList<String>(6);
+		for (int i = 0; i < 6; ++i) {
+			String poke = javascript("var p = curRoom.battle[arguments[0]].pokemon[arguments[1]]; if (p!=null && !p.fainted) return p.species;", side, i);
+			if (poke != null) {
+				team.add(poke);
 			}
-			int bracketIdx = name.indexOf(" (");
-			if (bracketIdx != -1) {
-				name = name.substring(0, bracketIdx);
-			}
-			team.add(name);
 		}
 		return team;
 	}
@@ -568,7 +569,7 @@ public class ShowdownHelper extends Helper {
 				"	return curRoom.battle.%side.lastPokemon.%field;\n"+
 				"return '';")
 				.replace("%side",side).replace("%field",pokeField);
-		String result = (String)((JavascriptExecutor)driver).executeScript(command);
+		String result = javascript(command);
 		return result;
 	}
 	
