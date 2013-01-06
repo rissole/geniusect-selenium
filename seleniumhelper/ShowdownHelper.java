@@ -173,7 +173,6 @@ public class ShowdownHelper extends Helper {
 		UNKNOWN,
 		ATTACK,
 		SWITCH,
-		KICKED,
 		WON,
 		LOST
 	}
@@ -182,7 +181,7 @@ public class ShowdownHelper extends Helper {
 	 * Waits for the next turn to begin or the battle to end, kicking inactive players.
 	 * @param kickAfterSeconds Clicks 'Kick inactive player' after this number of seconds. 
 	 * Set to 0 to never kick
-	 * @return Returns true if we are at the next turn, or false if the game ended (because we kicked them)
+	 * @return TurnEndStatus indicator.
 	 */
 	public TurnEndStatus waitForNextTurn(int kickAfterSeconds) {
 		int waited = 0;
@@ -195,15 +194,12 @@ public class ShowdownHelper extends Helper {
 			}
 			sleep(1000);
 			waited += 1;
+			haveWon = getBattleLogText().contains(getUserName() + " won the battle!");
+			haveLost = getBattleLogText().contains(getOpponentName() + " won the battle!");
 		}
 		String whatdoText = driver.findElement(By.cssSelector("div.whatdo")).getText();
 		if (haveWon) {
-			if (getBattleLogText().contains(getOpponentName() + " lost because of their inactivity.")) {
-				return TurnEndStatus.KICKED;
-			}
-			else {
-				return TurnEndStatus.WON;
-			}
+			return TurnEndStatus.WON;
 		}
 		else if (haveLost) {
 			return TurnEndStatus.LOST;
@@ -249,6 +245,23 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	/**
+	 * Gets the moves the specified Pokemon [species], on our team, currently has.
+	 * @return String List - names of the moves it has
+	 */
+	public List<String> getMoves(String pokemon) {
+		ArrayList<String> moves = new ArrayList<String>(6);
+		int slot = getSlotForSpecies(pokemon);
+		if (slot == -1)
+			return moves;
+		String pokeObj = "curRoom.battle.mySide.pokemon["+slot+"]";
+		long numberMoves = javascript("return "+pokeObj+".moves.length");
+		for (int i = 0; i < numberMoves; ++i) {
+			moves.add((String)javascript("return Tools.getMove("+pokeObj+".moves[arguments[0]]).name",i));
+		}
+		return moves;		
+	}
+	
+	/**
 	 * Gets the PP remaining for the move specified.
 	 * @return PP remaining for specified move, throws exception if we don't have that move.
 	 * @throws NoSuchChoiceException if the specified move can't be found
@@ -272,8 +285,10 @@ public class ShowdownHelper extends Helper {
 	 * @param byNickname Set to false to switch by species name.
 	 * @throws NoSuchChoiceException if the specified Pokemon can't be found
 	 * @throws IsTrappedException if we are trapped
+	 * @throws UnusableException if we can't switch to the specified Pokemon (it is fainted, for example)
 	 */
-	public void switchTo(String pokemon, boolean byNickname) throws NoSuchChoiceException, IsTrappedException {
+	public void switchTo(String pokemon, boolean byNickname) 
+			throws NoSuchChoiceException, IsTrappedException, UnusableException {
 		WebElement switchToDiv = driver.findElement(By.cssSelector("div.switchmenu"));
 		if (isTrapped()) {
 			throw new IsTrappedException();
@@ -281,6 +296,9 @@ public class ShowdownHelper extends Helper {
 		try {
 			if (byNickname) {
 				WebElement pokeButton = switchToDiv.findElement(By.xpath("//button[contains(text(),'"+pokemon+"')]"));
+				if (pokeButton.getAttribute("disabled") != null) {
+					throw new UnusableException("Pokemon "+pokemon+" cannot be switched to!");
+				}
 				pokeButton.click();
 			}
 			else {
@@ -288,7 +306,7 @@ public class ShowdownHelper extends Helper {
 				switchTo(getSlotForSpecies(pokemon));
 			}
 		}
-		catch (Exception e) {
+		catch (NoSuchElementException e) {
 			throw new NoSuchChoiceException("You do not have the Pokemon '"+pokemon+"'");
 		}
 	}
@@ -298,8 +316,10 @@ public class ShowdownHelper extends Helper {
 	 * @param slot It's the slot (0-5)
 	 * @throws NoSuchChoiceException if the specified slot is invalid
 	 * @throws IsTrappedException if we are trapped
+	 * @throws UnusableException if we can't switch to the specified Pokemon (it is fainted, for example)
 	 */
-	public void switchTo(int slot) throws NoSuchChoiceException, IsTrappedException {
+	public void switchTo(int slot) 
+			throws NoSuchChoiceException, IsTrappedException, UnusableException {
 		if (isTrapped()) {
 			throw new IsTrappedException();
 		}
@@ -307,6 +327,9 @@ public class ShowdownHelper extends Helper {
 		List<WebElement> buttons = switchToDiv.findElements(By.tagName("button"));
 		if (slot < 0 || slot >= buttons.size()) {
 			throw new NoSuchChoiceException("Cannot swap to slot " + slot);
+		}
+		if (buttons.get(slot).getAttribute("disabled") != null) {
+			throw new UnusableException("Pokemon in slot "+slot+" cannot be switched to!");
 		}
 		buttons.get(slot).click();
 	}
@@ -321,13 +344,18 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	/**
-	 * Returns the slot in which the Pokemon with the specified name is in.
+	 * Returns the slot on owner's team in which the Pokemon with the specified name is in.
 	 * @param pokemon Name of Pokemon species
-	 * @return Integer - 0-5, slot.
+	 * @param owner Which team we are investigating
+	 * @return Integer - 0-5, slot. -1 on error.
 	 */
-	private int getSlotForSpecies(String pokemon) {
+	private int getSlotForSpecies(String pokemon, String owner) {
+		String side = "mySide";
+		if (owner.equals(getOpponentName())) {
+			side = "yourSide";
+		}
 		for (int i = 0; i < 6; ++i) {
-			String species = javascript("var p = curRoom.battle.mySide.pokemon[arguments[0]]; if (p!=null) return p.species;", i);
+			String species = javascript("var p = curRoom.battle[arguments[0]].pokemon[arguments[1]]; if (p!=null) return p.species;", side, i);
 			if (pokemon.equals(species)) {
 				return i;
 			}
@@ -335,6 +363,30 @@ public class ShowdownHelper extends Helper {
 		return -1;
 	}
 	
+	/**
+	 * Gets the slot for the specified Pokemon species on our team.
+	 * @param pokemon Name of Pokemon species
+	 * @return Integer - 0-5, slot. -1 on error.
+	 */
+	private int getSlotForSpecies(String pokemon) {
+		return getSlotForSpecies(pokemon, getUserName());
+	}
+	
+	/**
+	 * Gets a Pokemon's attribute via javascript.
+	 * @param pokemon The species name of the Pokemon
+	 * @param owner Which team the Pokemon is on
+	 * @param attribute Which javascript attribute we are trying to get
+	 * @return Object - returned Javascript object (may be null)
+	 */
+	private Object getPokemonAttribute(String pokemon, String owner, String attribute) {
+		int slot = getSlotForSpecies(pokemon, owner);
+		String side = "mySide";
+		if (owner.equals(getOpponentName())) {
+			side = "yourSide";
+		}
+		return javascript("var p=curRoom.battle[arguments[0]].pokemon[arguments[1]]; if (p!=null) return p[arguments[2]];", side, slot, attribute);
+	}
 	
 	//// Battle log functions
 	
@@ -490,6 +542,17 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	/**
+	 * Returns species names of Pokemon we can switch to.
+	 * @param owner Name of team's owner
+	 * @return String List - Pokemon species names, or empty list on failure.
+	 */
+	public List<String> getSwitchableTeam() {
+		List<String> team = getAliveTeam(getUserName());
+		team.remove(getCurrentPokemon(true));
+		return team;
+	}
+	
+	/**
 	 * Waits until the battle log contains the specified text (up to 5 minutes)
 	 * @param message String to wait for.
 	 */
@@ -548,6 +611,7 @@ public class ShowdownHelper extends Helper {
 	
 	/**
 	 * Returns what Pokemon was last sent out on owner's side of the field.
+	 * <b>NOTE: THIS HAS PROBLEMS WITH ZOROARK</b> (as does Showdown itself)
 	 * @param owner Whose side of the field we are checking
 	 * @param resolveNickname Set to false to retrieve the nickname of the Pokemon rather than species
 	 * @return String - Pokemon name, empty string on failure.
@@ -562,6 +626,7 @@ public class ShowdownHelper extends Helper {
 			pokeField = "species";
 		}
 		
+		// this is probably bad
 		String command = 
 				("if (curRoom.battle.%side.active[0] != null)\n" +
 				"	return curRoom.battle.%side.active[0].%field;\n" +
@@ -575,6 +640,7 @@ public class ShowdownHelper extends Helper {
 	
 	/**
 	 * Returns what Pokemon was last sent out on our side of the field.
+	 * <b>NOTE: THIS HAS PROBLEMS WITH ZOROARK</b> (as does Showdown itself)
 	 * @param resolveNickname Set to false to retrieve the nickname of the Pokemon rather than species
 	 * @return String - Pokemon name, empty string on failure.
 	 */
@@ -584,6 +650,7 @@ public class ShowdownHelper extends Helper {
 	
 	/**
 	 * Returns what Pokemon was last sent out on the opponent's side of the field.
+	 * <b>NOTE: THIS HAS PROBLEMS WITH ZOROARK</b> (as does Showdown itself)
 	 * @param resolveNickname Set to false to retrieve the nickname of the Pokemon rather than species
 	 * @return String - Pokemon name, empty string on failure.
 	 */

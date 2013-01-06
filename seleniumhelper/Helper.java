@@ -87,7 +87,7 @@ public class Helper {
 		return driver;
 	}
 	
-	public String javascript(String script, Object...args) {
-		return (String)((JavascriptExecutor)driver).executeScript(script, args);
+	public <T> T javascript(String script, Object...args) {
+		return (T)((JavascriptExecutor)driver).executeScript(script, args);
 	}
 }

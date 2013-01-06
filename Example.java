@@ -50,7 +50,7 @@ public class Example  {
 	        System.out.println("Opponent's Pokemon: "+showdown.getCurrentPokemon(OPP, false));
 	             
 	        System.out.println("Moves:");
-	        printlist(showdown.getMoves());
+	        printlist(showdown.getMoves(showdown.getCurrentPokemon(true)));
 	        for (String move : showdown.getMoves()) {
 	        	System.out.println(move + ": " + showdown.getMoveRemainingPP(move) + " PP");
 	        }
@@ -60,10 +60,16 @@ public class Example  {
 	        	if (showdown.getBattleLogText().contains("gsquit")) {
 	        		break;
 	        	}
-	        	ourTeam = showdown.getAliveTeam(SELF);
-		        String switchingTo = ourTeam.get((new Random()).nextInt(ourTeam.size()));
-		        System.out.println("Switching to " + switchingTo);
-		        showdown.switchTo(switchingTo,false);
+	        	ourTeam = showdown.getSwitchableTeam();
+	        	String switchingTo = ourTeam.get(0);
+	        	if (ourTeam.size() > 0) {
+	        		switchingTo = ourTeam.get(1+(new Random()).nextInt(ourTeam.size()-1));
+	        		System.out.println("Switching to " + switchingTo);
+			        showdown.switchTo(switchingTo,false);
+	        	}
+	        	else {
+	        		showdown.doMove(showdown.getMoves().get(0));
+	        	}
 		        
 		        s = showdown.waitForNextTurn(10);
 		        System.err.println(s);
