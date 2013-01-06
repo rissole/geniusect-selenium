@@ -225,7 +225,7 @@ public class ShowdownHelper extends Helper {
 		try {
 			moveMenu.findElement(By.xpath("//button[text()='"+moveName+"']")).click();
 		}
-		catch (Exception e) {
+		catch (NoSuchElementException e) {
 			throw new NoSuchChoiceException("You do not have the move '"+moveName+"'");
 		}
 	}
@@ -235,13 +235,7 @@ public class ShowdownHelper extends Helper {
 	 * @return String List - names of the moves we have
 	 */
 	public List<String> getMoves() {
-		WebElement moveMenu = driver.findElement(By.cssSelector("div.movemenu"));
-		List<WebElement> moveButtons = moveMenu.findElements(By.tagName("button"));
-		List<String> moves = new ArrayList<String>(4);
-		for (WebElement e : moveButtons) {
-			moves.add(substringToFirst(e.getText(), 0, "\n"));
-		}
-		return moves;
+		return getMoves(getCurrentPokemon(true));
 	}
 	
 	/**
@@ -261,10 +255,28 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	/**
+	 * Returns whether the specified move on the active Pokemon is usable.
+	 * @param move The full move name.
+	 * @return Boolean
+	 * @throws NoSuchChoiceException If the active Pokemon does not have the specified move.
+	 */
+	public boolean isMoveUsable(String move) throws NoSuchChoiceException {
+		WebElement moveMenu = driver.findElement(By.cssSelector("div.movemenu"));
+		try {
+			return (moveMenu.findElement(By.xpath("//button[text()='"+move+"']")).getAttribute("disabled") == null);
+		}
+		catch (NoSuchElementException e) {
+			throw new NoSuchChoiceException("You do not have the move '"+move+"'");
+		}
+	}
+	
+	/**
 	 * Gets the moves the specified Pokemon [species], on our team, currently has.
+	 * @param pokemon The Pokemon whose moves we want to retrieve
+	 * @param getShortNames If true, shortnames will be returned. (ie "leechseed" not "Leech Seed")
 	 * @return String List - names of the moves it has
 	 */
-	public List<String> getMoves(String pokemon) {
+	public List<String> getMoves(String pokemon, boolean getShortNames) {
 		ArrayList<String> moves = new ArrayList<String>(6);
 		int slot = getSlotForSpecies(pokemon);
 		if (slot == -1)
@@ -272,9 +284,23 @@ public class ShowdownHelper extends Helper {
 		String pokeObj = "curRoom.battle.mySide.pokemon["+slot+"]";
 		long numberMoves = javascript("return "+pokeObj+".moves.length");
 		for (int i = 0; i < numberMoves; ++i) {
-			moves.add((String)javascript("return Tools.getMove("+pokeObj+".moves[arguments[0]]).name",i));
+			if (getShortNames == false) {
+				moves.add((String)javascript("return Tools.getMove("+pokeObj+".moves[arguments[0]]).name",i));
+			}
+			else {
+				moves.add((String)javascript("return "+pokeObj+".moves[arguments[0]]",i));
+			}
 		}
 		return moves;		
+	}
+	
+	/**
+	 * Gets the moves the specified Pokemon [species], on our team, currently has.
+	 * @param pokemon The Pokemon whose moves we want to retrieve
+	 * @return String List - names of the moves it has
+	 */
+	public List<String> getMoves(String pokemon) {
+		return getMoves(pokemon, false);
 	}
 	
 	/**
