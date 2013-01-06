@@ -185,8 +185,8 @@ public class ShowdownHelper extends Helper {
 	 */
 	public TurnEndStatus waitForNextTurn(int kickAfterSeconds) {
 		int waited = 0;
-		boolean haveWon = getBattleLogText().contains(getUserName() + " won the battle!");
-		boolean haveLost = getBattleLogText().contains(getOpponentName() + " won the battle!");
+		boolean haveWon = battleLogContains(getUserName() + " won the battle!");
+		boolean haveLost = battleLogContains(getOpponentName() + " won the battle!");
 		while (!isElementPresent(By.cssSelector("div.whatdo")) && !haveWon && !haveLost) {
 			if (kickAfterSeconds != 0 && waited >= kickAfterSeconds) {
 				kickInactivePlayer();
@@ -194,10 +194,9 @@ public class ShowdownHelper extends Helper {
 			}
 			sleep(1000);
 			waited += 1;
-			haveWon = getBattleLogText().contains(getUserName() + " won the battle!");
-			haveLost = getBattleLogText().contains(getOpponentName() + " won the battle!");
+			haveWon = battleLogContains(getUserName() + " won the battle!");
+			haveLost = battleLogContains(getOpponentName() + " won the battle!");
 		}
-		String whatdoText = driver.findElement(By.cssSelector("div.whatdo")).getText();
 		if (haveWon) {
 			return TurnEndStatus.WON;
 		}
@@ -205,6 +204,7 @@ public class ShowdownHelper extends Helper {
 			return TurnEndStatus.LOST;
 		}
 		else {
+			String whatdoText = driver.findElement(By.cssSelector("div.whatdo")).getText();
 			if (whatdoText.contains("Switch " + getCurrentPokemon(false) + " to:")) {
 				return TurnEndStatus.SWITCH;
 			}
@@ -441,6 +441,15 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	/**
+	 * Returns true if the battle log contains the specified string.
+	 * @param s The String to check for.
+	 * @return True if and only if the battle log contains the string specified.
+	 */
+	public boolean battleLogContains(String s) {
+		return (getBattleLogText().lastIndexOf(s) != -1);
+	}
+	
+	/**
 	 * Gets the text of the current turn we are in.
 	 * @return String - current turn text, or empty string if a turn hasn't started yet.
 	 */
@@ -559,7 +568,7 @@ public class ShowdownHelper extends Helper {
 	public void waitForBattleLogContains(final String message) {
 		(new WebDriverWait(driver, 300)).until(new ExpectedCondition<Boolean>() {
             public Boolean apply(WebDriver d) {
-                return getBattleLogText().contains(message);
+                return battleLogContains(message);
             }
         });
 	}

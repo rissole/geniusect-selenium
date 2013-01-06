@@ -61,9 +61,9 @@ public class Example  {
 	        		break;
 	        	}
 	        	ourTeam = showdown.getSwitchableTeam();
-	        	String switchingTo = ourTeam.get(0);
+	        	String switchingTo = "No one";
 	        	if (ourTeam.size() > 0) {
-	        		switchingTo = ourTeam.get(1+(new Random()).nextInt(ourTeam.size()-1));
+	        		switchingTo = ourTeam.get((new Random()).nextInt(ourTeam.size()));
 	        		System.out.println("Switching to " + switchingTo);
 			        showdown.switchTo(switchingTo,false);
 	        	}
