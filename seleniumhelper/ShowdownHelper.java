@@ -245,6 +245,22 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	/**
+	 * Gets the name of usable moves we currently have.
+	 * @return String List - names of the moves
+	 */
+	public List<String> getUsableMoves() {
+		WebElement moveMenu = driver.findElement(By.cssSelector("div.movemenu"));
+		List<WebElement> moveButtons = moveMenu.findElements(By.tagName("button"));
+		List<String> moves = new ArrayList<String>(4);
+		for (WebElement e : moveButtons) {
+			if (e.getAttribute("disabled") == null) {
+				moves.add(substringToFirst(e.getText(), 0, "\n"));
+			}
+		}
+		return moves;
+	}
+	
+	/**
 	 * Gets the moves the specified Pokemon [species], on our team, currently has.
 	 * @return String List - names of the moves it has
 	 */

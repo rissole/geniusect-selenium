@@ -68,7 +68,7 @@ public class Example  {
 			        showdown.switchTo(switchingTo,false);
 	        	}
 	        	else {
-	        		showdown.doMove(showdown.getMoves().get(0));
+	        		showdown.doMove(showdown.getUsableMoves().get(0));
 	        	}
 		        
 		        s = showdown.waitForNextTurn(10);
