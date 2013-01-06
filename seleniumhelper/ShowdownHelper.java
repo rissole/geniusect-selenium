@@ -708,4 +708,28 @@ public class ShowdownHelper extends Helper {
 	public String getCurrentOpponentPokemon(boolean resolveNickname) {
 		return getCurrentPokemon(getOpponentName(), resolveNickname);
 	}
+	
+	/**
+	 * Gets the format of the game we are currently in.
+	 * @return String - Format, eg "OU (current)"
+	 */
+	public String getFormat() {
+		String blt = getBattleLogText();
+		return (substringToFirst(blt, blt.indexOf("Format: ")+8, "\n"));
+	}
+	
+	/**
+	 * Gets the clauses that are active in the game we are currently in.
+	 * @return String List - Clauses, eg "Sleep Clause"
+	 */
+	public List<String> getClauses() {
+		String blt = getTurnText(0);
+		ArrayList<String> clauses = new ArrayList<String>();
+		int idx = 0;
+		while ((idx=blt.indexOf("Rule: ",idx)) != -1) {
+			clauses.add(substringToFirst(blt,idx+6,"\n"));
+			idx += 6;
+		}
+		return clauses;
+	}
 }

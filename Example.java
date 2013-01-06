@@ -55,6 +55,9 @@ public class Example  {
 	        	System.out.println(move + ": " + showdown.getMoveRemainingPP(move) + " PP");
 	        }
 	        
+	        System.out.println("Format: "+showdown.getFormat()+"\nClauses: ");
+	        printlist(showdown.getClauses());
+	        
 	        TurnEndStatus s = TurnEndStatus.UNKNOWN;
 	        while (s != TurnEndStatus.WON && s != TurnEndStatus.LOST) {
 	        	if (showdown.getBattleLogText().contains("gsquit")) {
