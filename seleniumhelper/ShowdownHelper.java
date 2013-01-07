@@ -432,6 +432,36 @@ public class ShowdownHelper extends Helper {
 		return javascript("var p=curRoom.battle[arguments[0]].pokemon[arguments[1]]; if (p!=null) return p[arguments[2]];", side, slot, attribute);
 	}
 	
+	/**
+	 * Returns the current status of the Pokemon.
+	 * @param pokemon The species name of the Pokemon
+	 * @param owner Which team the Pokemon is on
+	 * @return String - Pokemon status. 3 character abbreviation, lower case.
+	 * Can return: <b>'tox', 'psn', 'frz', 'par', 'brn'.</b>
+	 */
+	public String getStatus(String pokemon, String owner) {
+		return (String)getPokemonAttribute(pokemon, owner, "status");
+	}
+	
+	/**
+	 * Returns whether the Pokemon specified has the given volatile. A volatile is an effect which
+	 * is usually removed on switch.
+	 * @param pokemon The species name of the Pokemon
+	 * @param owner  Which team the Pokemon is on
+	 * @param _volatile String - volatile name.<br/>
+	 * Known values: <b>formechange, leechseed, protect, magiccoat, yawn, confusion,
+	 * airballoon, transform, substitute, taunt, encore, torment, stockpile{1,2,3}, perish{1,2,3}</b>
+	 * @return
+	 */
+	public boolean hasVolatile(String pokemon, String owner, String _volatile) {
+		int slot = getSlotForSpecies(pokemon, owner);
+		String side = "mySide";
+		if (owner.equals(getOpponentName())) {
+			side = "yourSide";
+		}
+		return (Boolean)javascript("var p=curRoom.battle[arguments[0]].pokemon[arguments[1]]; if (p!=null) return p.hasVolatile(arguments[2]);", side, slot, _volatile);
+	}
+	
 	//// Battle log functions
 	
 	/**
