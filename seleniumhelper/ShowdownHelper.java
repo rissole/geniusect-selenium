@@ -143,7 +143,9 @@ public class ShowdownHelper extends Helper {
 	 * Presses "Kick Inactive Player" button
 	 */
 	public void kickInactivePlayer() {
-		clickAt(By.cssSelector("div.replay-controls > button"));
+		if (isElementPresent(By.cssSelector("div.replay-controls > button"))) {
+			clickAt(By.cssSelector("div.replay-controls > button"));
+		}
 	}
 	
 	/**
@@ -185,23 +187,23 @@ public class ShowdownHelper extends Helper {
 	 */
 	public TurnEndStatus waitForNextTurn(int kickAfterSeconds) {
 		int waited = 0;
-		boolean haveWon = battleLogContains(getUserName() + " won the battle!");
-		boolean haveLost = battleLogContains(getOpponentName() + " won the battle!");
-		while (!isElementPresent(By.cssSelector("div.whatdo")) && !haveWon && !haveLost) {
-			if (kickAfterSeconds != 0 && waited >= kickAfterSeconds) {
+		boolean gameOver = false;
+		while (!isElementPresent(By.cssSelector("div.whatdo")) && !gameOver) {
+			if (kickAfterSeconds != 0 && waited >= kickAfterSeconds*1000) {
 				kickInactivePlayer();
 				kickAfterSeconds = 0;
 			}
-			sleep(1000);
-			waited += 1;
-			haveWon = battleLogContains(getUserName() + " won the battle!");
-			haveLost = battleLogContains(getOpponentName() + " won the battle!");
+			sleep(500);
+			waited += 500;
+			gameOver = ((Long)javascript("return curRoom.battle.done;") > 0);
 		}
-		if (haveWon) {
-			return TurnEndStatus.WON;
-		}
-		else if (haveLost) {
-			return TurnEndStatus.LOST;
+		if (gameOver) {
+			if (battleLogContains(getUserName() + " won the battle!")) {
+				return TurnEndStatus.WON;
+			}
+			else {
+				return TurnEndStatus.LOST;
+			}
 		}
 		else {
 			String whatdoText = driver.findElement(By.cssSelector("div.whatdo")).getText();
