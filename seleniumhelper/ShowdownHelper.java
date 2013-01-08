@@ -462,6 +462,53 @@ public class ShowdownHelper extends Helper {
 		return (Boolean)javascript("var p=curRoom.battle[arguments[0]].pokemon[arguments[1]]; if (p!=null) return p.hasVolatile(arguments[2]);", side, slot, _volatile);
 	}
 	
+	/**
+	 * Returns whether the specified Pokemon has fainted or not.
+	 * @param pokemon The species name of the Pokemon
+	 * @param owner Which team the Pokemon is on
+	 * @return True if fainted, false otherwise.
+	 */
+	public boolean isFainted(String pokemon, String owner) {
+		return (Boolean)getPokemonAttribute(pokemon,owner,"fainted");
+	}
+	
+	/**
+	 * Returns the specified Pokemon's HP.
+	 * <b>NOTE: This returns a percentage (0-100) if the <code>owner</code> is the opponent; otherwise
+	 * the exact HP value.</b>
+	 * @param pokemon The species name of the Pokemon
+	 * @param owner Which team the Pokemon is on
+	 * @return Integer - returns a percentage (0-100) if the <code>owner</code> is the opponent; otherwise
+	 * the exact HP value.
+	 */
+	public int getHP(String pokemon, String owner) {
+		return (Integer)getPokemonAttribute(pokemon,owner,"hp");
+	}
+	
+	/**
+	 * Returns the specified Pokemon's Max HP.
+	 * <b>NOTE: This returns 100 if the <code>owner</code> is the opponent; otherwise
+	 * the exact max HP value.</b>
+	 * @param pokemon The species name of the Pokemon
+	 * @param owner Which team the Pokemon is on
+	 * @return Integer - returns 100 if the <code>owner</code> is the opponent; otherwise
+	 * the exact HP value.
+	 */
+	public int getMaxHP(String pokemon, String owner) {
+		return (Integer)getPokemonAttribute(pokemon,owner,"hp");
+	}
+	
+	/**
+	 * Returns the boosts of the Pokemon currently on <code>owner</code>'s side of the field.
+	 * @param owner Which team the Pokemon is on
+	 * @return Map - <code>(stat,boost)</code> pairs, <code>stat</code> being one of <b>atk, def, spa, spd, spe</b> and
+	 * -6 <= <code>boost</code> <= 6.
+	 */
+	public Map<String,Integer> getBoosts(String owner) {
+		Map<String,Integer> boosts = new HashMap<String,Integer>();
+		return boosts;
+	}
+	
 	//// Battle log functions
 	
 	/**
