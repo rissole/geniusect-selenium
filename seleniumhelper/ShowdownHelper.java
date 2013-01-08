@@ -495,7 +495,7 @@ public class ShowdownHelper extends Helper {
 	 * the exact HP value.
 	 */
 	public int getMaxHP(String pokemon, String owner) {
-		return (Integer)getPokemonAttribute(pokemon,owner,"hp");
+		return (Integer)getPokemonAttribute(pokemon,owner,"maxhp");
 	}
 	
 	/**
