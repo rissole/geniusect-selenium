@@ -18,7 +18,7 @@ public class Example  {
     	FirefoxDriver driver = new FirefoxDriver();
     	// wait up to 10 seconds for elements to load
     	driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
-        ShowdownHelper showdown = new ShowdownHelper(driver, "http://play.pokemonshowdown.com/~~rissole-showdown.herokuapp.com:80");
+        ShowdownHelper showdown = new ShowdownHelper(driver);
         showdown.open();
         //String[] userPass = loadUserPass();
         //showdown.login("geniusecttest"+(new Random()).nextInt(100000), "");

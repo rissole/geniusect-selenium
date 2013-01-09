@@ -9,6 +9,8 @@ import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
+import org.json.*;
+
 /**
  * Selenium helper functions specifically for Pokemon Showdown.
  * @author burse
@@ -287,7 +289,11 @@ public class ShowdownHelper extends Helper {
 		long numberMoves = javascript("return "+pokeObj+".moves.length");
 		for (int i = 0; i < numberMoves; ++i) {
 			if (getShortNames == false) {
-				moves.add((String)javascript("return Tools.getMove("+pokeObj+".moves[arguments[0]]).name",i));
+				String moveName = (String)javascript("return Tools.getMove("+pokeObj+".moves[arguments[0]]).name",i);
+				if (moveName.contains("Hidden Power")) {
+					moveName = "Hidden Power";
+				}
+				moves.add(moveName);
 			}
 			else {
 				moves.add((String)javascript("return "+pokeObj+".moves[arguments[0]]",i));
@@ -505,7 +511,23 @@ public class ShowdownHelper extends Helper {
 	 * -6 <= <code>boost</code> <= 6.
 	 */
 	public Map<String,Integer> getBoosts(String owner) {
+		String side = "mySide";
+		if (owner.equals(getOpponentName())) {
+			side = "yourSide";
+		}
 		Map<String,Integer> boosts = new HashMap<String,Integer>();
+		String jsonBoosts = (String)javascript("return JSON.stringify(curRoom.battle[arguments[0]].active[0].boosts);", side);
+		try {
+			JSONObject jo = new JSONObject(jsonBoosts);
+			Iterator<String> itr = jo.keys();
+			while (itr.hasNext()) {
+				String k = itr.next();
+				boosts.put(k, jo.getInt(k));
+			}
+		}
+		catch (JSONException e) {
+			return boosts;
+		}
 		return boosts;
 	}
 	
