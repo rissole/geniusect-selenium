@@ -18,15 +18,20 @@ public class Example  {
     	FirefoxDriver driver = new FirefoxDriver();
     	// wait up to 10 seconds for elements to load
     	driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
-        ShowdownHelper showdown = new ShowdownHelper(driver);
+        ShowdownHelper showdown = new ShowdownHelper(driver, "http://play.pokemonshowdown.com/~~rissole-showdown.herokuapp.com:80");
         showdown.open();
         //String[] userPass = loadUserPass();
         //showdown.login("geniusecttest"+(new Random()).nextInt(100000), "");
+        showdown.sleep(60000);
         showdown.login("geniusecttest"+(new Random()).nextInt(100000), "");
-        showdown.findBattle("Random Battle", "");
+        showdown.findBattle("Ubers (suspect test)", "t");
         
         // WAIT FOR BATTLE START
-        showdown.waitForBattleStart();
+        TurnEndStatus startStatus = showdown.waitForBattleStart();
+        if (startStatus == TurnEndStatus.SWITCH) {
+        	showdown.switchTo(0);
+        	showdown.waitForNextTurn(0);
+        }
         try {
 	        String SELF = showdown.getUserName();
 	        String OPP = showdown.getOpponentName();

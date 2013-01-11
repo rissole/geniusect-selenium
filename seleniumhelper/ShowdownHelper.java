@@ -91,10 +91,15 @@ public class ShowdownHelper extends Helper {
 	
 	/**
 	 * Waits for a battle to begin. Times out after two minutes.
+	 * @return TurnEndStatus.SWITCH if we are prompted for a lead Pokemon, TurnEndStatus.ATTACK otherwise.
 	 */
-	public void waitForBattleStart() {
+	public TurnEndStatus waitForBattleStart() {
 		waitForElementPresent(By.cssSelector("div.whatdo"), 120);
 		sleep(500);
+		if (driver.findElement(By.cssSelector("div.whatdo")).getText().contains("How will you start the battle?")) {
+			return TurnEndStatus.SWITCH;
+		}
+		return TurnEndStatus.ATTACK;
 	}
 	
 	/**
@@ -322,9 +327,10 @@ public class ShowdownHelper extends Helper {
 			WebElement moveButton = moveMenu.findElement(By.xpath("//button[contains(text(),'"+move+"')]"));
 			String[] moveInfo = moveButton.getText().split("\n");
 			// moveInfo = [move name, type, pp/maxpp]
+			System.out.println(moveButton.getText().replace("\n","\\n"));
 			return Integer.parseInt(substringToFirst(moveInfo[2], 0, "/"));
 		}
-		catch (Exception e) {
+		catch (NoSuchElementException e) {
 			throw new NoSuchChoiceException("You do not have the move '"+move+"'");
 		}
 	}
