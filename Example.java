@@ -15,6 +15,7 @@ import seleniumhelper.ShowdownHelper.TurnEndStatus;
 
 public class Example  {
     public static void main(String[] args) throws Exception {
+    	//System.setProperty("webdriver.firefox.profile", "default");
     	FirefoxDriver driver = new FirefoxDriver();
     	// wait up to 10 seconds for elements to load
     	driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
@@ -24,7 +25,7 @@ public class Example  {
         //showdown.login("geniusecttest"+(new Random()).nextInt(100000), "");
         showdown.sleep(60000);
         showdown.login("geniusecttest"+(new Random()).nextInt(100000), "");
-        showdown.findBattle("Ubers (suspect test)", "t");
+        showdown.findBattle("Ubers (suspect test)", "Untitled 18");
         
         // WAIT FOR BATTLE START
         TurnEndStatus startStatus = showdown.waitForBattleStart();

@@ -92,10 +92,18 @@ public class ShowdownHelper extends Helper {
 	/**
 	 * Waits for a battle to begin. Times out after two minutes.
 	 * @return TurnEndStatus.SWITCH if we are prompted for a lead Pokemon, TurnEndStatus.ATTACK otherwise.
+	 * @throws InvalidTeamException If Showdown rejects your team for any reason.
 	 */
-	public TurnEndStatus waitForBattleStart() {
-		waitForElementPresent(By.cssSelector("div.whatdo"), 120);
+	public TurnEndStatus waitForBattleStart() throws InvalidTeamException {
+		(new WebDriverWait(driver, 120)).until(new ExpectedCondition<Boolean>() {
+            public Boolean apply(WebDriver d) {
+                return isElementPresent(By.cssSelector("div.whatdo")) || isElementPresent(By.id("messagebox"));
+            }
+        });
 		sleep(500);
+		if (isElementPresent(By.id("messagebox"))) {
+			throw new InvalidTeamException(driver.findElement(By.cssSelector("#messagebox > div")).getText());
+		}
 		if (driver.findElement(By.cssSelector("div.whatdo")).getText().contains("How will you start the battle?")) {
 			return TurnEndStatus.SWITCH;
 		}
