@@ -186,6 +186,37 @@ public class ShowdownHelper extends Helper {
 		}
 	}
 	
+	/**
+	 * Creates a team in the teambuilder from an importable.
+	 * @param importable The full importable in Pokemon Showdown format.
+	 * @param teamName The name you want the team to have. Recommended to be unique.
+	 */
+	public void createTeam(String importable, String teamName) {
+		driver.findElement(By.id("tabtab-teambuilder")).click();
+		sleep(500);
+		int attempts = 0;
+		while (!isElementVisible(By.xpath("//button[text()=' New team']"))) {
+			clickAt(By.xpath("//button[i[@class='icon-chevron-left']]"));
+			sleep(500);
+			++attempts;
+			if (attempts > 20) {
+				throw new NoSuchElementException("Could not find 'New Team' button");
+			}
+		}
+	    driver.findElement(By.xpath("//button[text()=' New team']")).click();
+	    sleep(500);
+	    driver.findElement(By.xpath("//button[text()=' Import/Export']")).click();
+	    sleep(500);
+	    driver.findElement(By.cssSelector("textarea.teamedit")).clear();
+	    driver.findElement(By.cssSelector("textarea.teamedit")).sendKeys(importable);
+	    driver.findElement(By.cssSelector("input.textbox.teamnameedit")).clear();
+	    driver.findElement(By.cssSelector("input.textbox.teamnameedit")).sendKeys(teamName);
+	    driver.findElement(By.cssSelector("button.savebutton")).click();
+	    sleep(500);
+	    driver.findElement(By.id("tabtab-lobby")).click();
+	    sleep(500);
+	}
+	
 	public enum TurnEndStatus {
 		UNKNOWN,
 		ATTACK,

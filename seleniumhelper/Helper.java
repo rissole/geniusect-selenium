@@ -26,6 +26,15 @@ public class Helper {
 		}
 	}
 	
+	public boolean isElementVisible(By by) {
+		try {
+			return driver.findElement(by).isDisplayed();
+		}
+		catch (NoSuchElementException e) {
+			return false;
+		}
+	}
+	
 	public void waitForElementPresent(final By by) {
 		waitForElementPresent(by, 10);
 	}

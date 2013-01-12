@@ -22,10 +22,10 @@ public class Example  {
         ShowdownHelper showdown = new ShowdownHelper(driver, "http://play.pokemonshowdown.com/~~rissole-showdown.herokuapp.com:80");
         showdown.open();
         //String[] userPass = loadUserPass();
-        //showdown.login("geniusecttest"+(new Random()).nextInt(100000), "");
-        showdown.sleep(60000);
+        //showdown.sleep(60000);
         showdown.login("geniusecttest"+(new Random()).nextInt(100000), "");
-        showdown.findBattle("Ubers (suspect test)", "Untitled 18");
+        showdown.createTeam("Shuckle @ Rocky Helmet\nTrait: Sturdy\nEVs: 252 SDef / 252 HP / 4 Atk\nCareful Nature\n- Acupressure\n- Power Split\n- Rest\n- Rollout", "t");
+        showdown.findBattle("Ubers (suspect test)", "t");
         
         // WAIT FOR BATTLE START
         TurnEndStatus startStatus = showdown.waitForBattleStart();
