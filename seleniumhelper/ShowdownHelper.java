@@ -324,10 +324,11 @@ public class ShowdownHelper extends Helper {
 	 * @throws NoSuchChoiceException If the active Pokemon does not have the specified move.
 	 */
 	public boolean isMoveUsable(String move) throws NoSuchChoiceException {
-		try {
-			return (findMoveButton(move).getAttribute("disabled") == null);
+		WebElement moveButton = findMoveButton(move);
+		if (moveButton != null) {
+			return (moveButton.getAttribute("disabled") == null);
 		}
-		catch (NoSuchElementException e) {
+		else {
 			throw new NoSuchChoiceException("You do not have the move '"+move+"'");
 		}
 	}
