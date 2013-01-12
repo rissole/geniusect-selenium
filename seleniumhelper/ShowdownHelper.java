@@ -264,16 +264,31 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	/**
+	 * Finds the WebElement of the button with the specified move name.
+	 * @param moveName Move name (case insensitive)
+	 * @return WebElement - button, null on failure
+	 */
+	private WebElement findMoveButton(String moveName) {
+		WebElement moveMenu = driver.findElement(By.cssSelector("div.movemenu"));
+		for (WebElement e : moveMenu.findElements(By.tagName("button"))) {
+			if (substringToFirst(e.getText(), 0, "\n").equalsIgnoreCase(moveName)) {
+				return e;
+			}
+		}
+		return null;
+	}
+	
+	/**
 	 * Chooses the specified move to attack with.
 	 * @param moveName The move to use.
 	 * @throws NoSuchChoiceException if the specified move can't be found 
 	 */
 	public void doMove(String moveName) throws NoSuchChoiceException {
-		WebElement moveMenu = driver.findElement(By.cssSelector("div.movemenu"));
-		try {
-			moveMenu.findElement(By.xpath("//button[text()='"+moveName+"']")).click();
+		WebElement moveButton = findMoveButton(moveName);
+		if (moveButton != null) {
+			moveButton.click();
 		}
-		catch (NoSuchElementException e) {
+		else {
 			throw new NoSuchChoiceException("You do not have the move '"+moveName+"'");
 		}
 	}
@@ -309,9 +324,8 @@ public class ShowdownHelper extends Helper {
 	 * @throws NoSuchChoiceException If the active Pokemon does not have the specified move.
 	 */
 	public boolean isMoveUsable(String move) throws NoSuchChoiceException {
-		WebElement moveMenu = driver.findElement(By.cssSelector("div.movemenu"));
 		try {
-			return (moveMenu.findElement(By.xpath("//button[text()='"+move+"']")).getAttribute("disabled") == null);
+			return (findMoveButton(move).getAttribute("disabled") == null);
 		}
 		catch (NoSuchElementException e) {
 			throw new NoSuchChoiceException("You do not have the move '"+move+"'");
@@ -361,15 +375,13 @@ public class ShowdownHelper extends Helper {
 	 * @throws NoSuchChoiceException if the specified move can't be found
 	 */
 	public int getMoveRemainingPP(String move) throws NoSuchChoiceException {
-		WebElement moveMenu = driver.findElement(By.cssSelector("div.movemenu"));
-		try {
-			WebElement moveButton = moveMenu.findElement(By.xpath("//button[contains(text(),'"+move+"')]"));
+		WebElement moveButton = findMoveButton(move);
+		if (moveButton != null) {
 			String[] moveInfo = moveButton.getText().split("\n");
 			// moveInfo = [move name, type, pp/maxpp]
-			System.out.println(moveButton.getText().replace("\n","\\n"));
 			return Integer.parseInt(substringToFirst(moveInfo[2], 0, "/"));
 		}
-		catch (NoSuchElementException e) {
+		else {
 			throw new NoSuchChoiceException("You do not have the move '"+move+"'");
 		}
 	}
