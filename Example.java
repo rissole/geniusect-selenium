@@ -47,11 +47,11 @@ public class Example  {
 	        printlist(team);
 	        System.out.println();
 	        
-	        System.out.println("Current turn: " + showdown.getCurrentTurn());
+	        System.out.println("Current turn: " + showdown.getBattleLog().getCurrentTurn());
 	        System.out.println("-Current turn---------------");
-	        System.out.println(showdown.getCurrentTurnText());
+	        System.out.println(showdown.getBattleLog().getCurrentTurnText());
 	        System.out.println("-Last turn----------");
-	        System.out.println(showdown.getLastTurnText());
+	        System.out.println(showdown.getBattleLog().getLastTurnText());
 	        System.out.println("----------------");
 	        System.out.println("Opponent's Pokemon: "+showdown.getCurrentPokemon(OPP, false));
 	             
@@ -61,12 +61,12 @@ public class Example  {
 	        	System.out.println(move + ": " + showdown.getMoveRemainingPP(move) + " PP");
 	        }
 	        
-	        System.out.println("Format: "+showdown.getFormat()+"\nClauses: ");
-	        printlist(showdown.getClauses());
+	        System.out.println("Format: "+showdown.getBattleLog().getFormat()+"\nClauses: ");
+	        printlist(showdown.getBattleLog().getClauses());
 	        
 	        TurnEndStatus s = TurnEndStatus.UNKNOWN;
 	        while (s != TurnEndStatus.WON && s != TurnEndStatus.LOST) {
-	        	if (showdown.getBattleLogText().contains("gsquit")) {
+	        	if (showdown.getBattleLog().getLogText().contains("gsquit")) {
 	        		break;
 	        	}
 	        	ourTeam = showdown.getSwitchableTeam();
@@ -116,7 +116,7 @@ public class Example  {
     		File out = new File(battleTitle+".log");
     		out.createNewFile();
 			PrintWriter w = new PrintWriter(out);
-			w.write(showdown.getBattleLogText());
+			w.write(showdown.getBattleLog().getLogText());
 			w.close();
 			System.out.println("Dumped log to " + battleTitle+".log");
 		}

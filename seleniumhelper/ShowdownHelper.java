@@ -1,15 +1,19 @@
 package seleniumhelper;
-import java.io.File;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
-import org.openqa.selenium.*;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.openqa.selenium.By;
+import org.openqa.selenium.Keys;
 import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.openqa.selenium.support.ui.WebDriverWait;
-
-import org.json.*;
 
 /**
  * Selenium helper functions specifically for Pokemon Showdown.
@@ -19,7 +23,11 @@ public class ShowdownHelper extends Helper {
 	
 	// Base URL of Pokemon Showdown server.
 	private String rootURL;
+	
+	// Currently logged in user
 	private String currentUser;
+	
+	private BattleLog battlelog;
 	
 	/**
 	 * Creates an instance of helper functions for Pokemon Showdown automation
@@ -31,6 +39,7 @@ public class ShowdownHelper extends Helper {
 		super(driver);
 		this.rootURL = rootURL;
 		this.currentUser = "";
+		this.battlelog = null;
 	}
 	
 	/**
@@ -41,6 +50,7 @@ public class ShowdownHelper extends Helper {
 		super(driver);
 		rootURL = "http://play.pokemonshowdown.com";
 		this.currentUser = "";
+		this.battlelog = null;
 	}
 	
 	/**
@@ -104,6 +114,7 @@ public class ShowdownHelper extends Helper {
 		if (isElementPresent(By.id("messagebox"))) {
 			throw new InvalidTeamException(driver.findElement(By.cssSelector("#messagebox > div")).getText());
 		}
+		initBattleLog();
 		if (driver.findElement(By.cssSelector("div.whatdo")).getText().contains("How will you start the battle?")) {
 			return TurnEndStatus.SWITCH;
 		}
@@ -243,8 +254,9 @@ public class ShowdownHelper extends Helper {
 			waited += 500;
 			gameOver = ((Long)javascript("return curRoom.battle.done;") > 0);
 		}
+		updateBattleLog();
 		if (gameOver) {
-			if (battleLogContains(getUserName() + " won the battle!")) {
+			if (battlelog.contains(getUserName() + " won the battle!")) {
 				return TurnEndStatus.WON;
 			}
 			else {
@@ -457,7 +469,7 @@ public class ShowdownHelper extends Helper {
 	 * @param owner Which team we are investigating
 	 * @return Integer - 0-5, slot. -1 on error.
 	 */
-	private int getSlotForSpecies(String pokemon, String owner) {
+	public int getSlotForSpecies(String pokemon, String owner) {
 		String side = "mySide";
 		if (owner.equals(getOpponentName())) {
 			side = "yourSide";
@@ -476,7 +488,7 @@ public class ShowdownHelper extends Helper {
 	 * @param pokemon Name of Pokemon species
 	 * @return Integer - 0-5, slot. -1 on error.
 	 */
-	private int getSlotForSpecies(String pokemon) {
+	public int getSlotForSpecies(String pokemon) {
 		return getSlotForSpecies(pokemon, getUserName());
 	}
 	
@@ -589,126 +601,70 @@ public class ShowdownHelper extends Helper {
 		return boosts;
 	}
 	
-	//// Battle log functions
-	
 	/**
-	 * Gets the substring, starting at startIndex, up to the first instance of 'stop'.
-	 * @param s String to search
-	 * @param startIndex Index to start from
-	 * @param stop String to stop at
-	 * @return The whole string if the 'stop' could not be found
+	 * Waits until the battle log contains the specified text (up to 5 minutes)
+	 * @param message String to wait for.
 	 */
-	private String substringToFirst(String s, int startIndex, String stop) {
-		int idx = s.indexOf(stop, startIndex);
-		if (idx == -1) {
-			return s;
-		}
-		return s.substring(startIndex, idx);
+	public void waitForBattleLogContains(final String message) {
+		(new WebDriverWait(driver, 300)).until(new ExpectedCondition<Boolean>() {
+           public Boolean apply(WebDriver d) {
+               return battlelog.contains(message);
+           }
+       });
 	}
 	
 	/**
-	 * Gets the latest turn in the current battle.
-	 * @return Integer - the turn, or 0 if a turn has not been started.
+	 * Returns what Pokemon was last sent out on owner's side of the field.
+	 * <b>NOTE: THIS HAS PROBLEMS WITH ZOROARK</b> (as does Showdown itself)
+	 * @param owner Whose side of the field we are checking
+	 * @param resolveNickname Set to false to retrieve the nickname of the Pokemon rather than species
+	 * @return String - Pokemon name, empty string on failure.
 	 */
-	public int getCurrentTurn() {
-		String cTT = getCurrentTurnText();
-		if (cTT == "") {
-			return 0;
+	public String getCurrentPokemon(String owner, boolean resolveNickname) {
+		String side = "mySide";
+		if (owner.equals(getOpponentName())) {
+			side = "yourSide";
+		}
+		String pokeField = "name";
+		if (resolveNickname) {
+			pokeField = "species";
 		}
 		
-		String turnString = "";
-		if (Pattern.matches("^Turn (\\d+)$", cTT)) {
-			turnString = cTT.substring(5);
-		}
-		else {
-			turnString = substringToFirst(cTT, 5, "\n");
-		}
-		
-		try {
-			return Integer.parseInt(turnString);
-		}
-		catch (Exception e) {
-			return 0;
-		}
+		// this is probably bad
+		String command = 
+				("if (curRoom.battle.%side.active[0] != null)\n" +
+				"	return curRoom.battle.%side.active[0].%field;\n" +
+				"else if (curRoom.battle.%side.lastPokemon != null)\n" + 
+				"	return curRoom.battle.%side.lastPokemon.%field;\n"+
+				"return '';")
+				.replace("%side",side).replace("%field",pokeField);
+		String result = javascript(command);
+		return result;
 	}
 	
 	/**
-	 * Gets the whole text in the Battle Log.
-	 * @return String - battle log text, including new lines.
+	 * Returns what Pokemon was last sent out on our side of the field.
+	 * <b>NOTE: THIS HAS PROBLEMS WITH ZOROARK</b> (as does Showdown itself)
+	 * @param resolveNickname Set to false to retrieve the nickname of the Pokemon rather than species
+	 * @return String - Pokemon name, empty string on failure.
 	 */
-	public String getBattleLogText() {
-		WebElement battleLog = driver.findElement(By.cssSelector("div.battle-log"));
-		return battleLog.getText();
+	public String getCurrentPokemon(boolean resolveNickname) {
+		return getCurrentPokemon(getUserName(), resolveNickname);
 	}
 	
 	/**
-	 * Returns true if the battle log contains the specified string.
-	 * @param s The String to check for.
-	 * @return True if and only if the battle log contains the string specified.
+	 * Returns what Pokemon was last sent out on the opponent's side of the field.
+	 * <b>NOTE: THIS HAS PROBLEMS WITH ZOROARK</b> (as does Showdown itself)
+	 * @param resolveNickname Set to false to retrieve the nickname of the Pokemon rather than species
+	 * @return String - Pokemon name, empty string on failure.
 	 */
-	public boolean battleLogContains(String s) {
-		return (getBattleLogText().lastIndexOf(s) != -1);
+	public String getCurrentOpponentPokemon(boolean resolveNickname) {
+		return getCurrentPokemon(getOpponentName(), resolveNickname);
 	}
 	
-	/**
-	 * Gets the text of the current turn we are in.
-	 * @return String - current turn text, or empty string if a turn hasn't started yet.
-	 */
-	public String getCurrentTurnText() {
-		String battleText = getBattleLogText();
-		int currentTurnIdx = battleText.lastIndexOf("Turn ");
-		if (currentTurnIdx == -1) {
-			return "";
-		}
-		else {
-			return battleText.substring(currentTurnIdx);
-		}
-	}
-	
-	/**
-	 * Gets the text of the last turn we were in.
-	 * Turn 0 is considered to be the initial announcement of team, format, etc.
-	 * @return String - last turn text, or empty string if a turn hasn't been completed yet.
-	 */
-	public String getLastTurnText() {
-		return getTurnText(getCurrentTurn()-1);
-	}
-	
-	/**
-	 * Gets the text of the specified turn.
-	 * @param turn The turn. Turn 0 is considered to be the initial announcement of team, format, etc.
-	 * @return String - the text from that turn, including "Turn (turn number)" heading
-	 */
-	public String getTurnText(int turn) {
-		if (turn == getCurrentTurn()) {
-			return getCurrentTurnText();
-		}
-		
-		String battleText = getBattleLogText();
-		int turnIdx;
-		if (turn == 0) {
-			turnIdx = battleText.indexOf("Turn 1");
-			return battleText.substring(0, turnIdx);
-		}
-		String turnStr = "Turn " + turn;
-		turnIdx = battleText.indexOf(turnStr);
-		int nextTurnIdx = battleText.indexOf("Turn", turnIdx+turnStr.length());
-		if (turnIdx == -1 || nextTurnIdx == -1) {
-			return "";
-		}
-		else {
-			return battleText.substring(turnIdx, nextTurnIdx);
-		}
-	}
-	
-	private WebElement getTrainerDiv(String owner) {
-		List<WebElement> allElements = driver.findElements(By.cssSelector("div.trainer"));
-		for (WebElement e : allElements) {
-			if (e.getText().equals(owner)) {
-				return e;
-			}
-		}
-		return null;
+	// Why? Answer: lazy.
+	public static String substringToFirst(String s, int startIndex, String stop) {
+		return BattleLog.substringToFirst(s, startIndex, stop);
 	}
 	
 	/**
@@ -762,133 +718,15 @@ public class ShowdownHelper extends Helper {
 		return team;
 	}
 	
-	/**
-	 * Waits until the battle log contains the specified text (up to 5 minutes)
-	 * @param message String to wait for.
-	 */
-	public void waitForBattleLogContains(final String message) {
-		(new WebDriverWait(driver, 300)).until(new ExpectedCondition<Boolean>() {
-            public Boolean apply(WebDriver d) {
-                return battleLogContains(message);
-            }
-        });
+	public void initBattleLog() {
+		battlelog = new BattleLog(driver.findElement(By.cssSelector("div.battle-log")).getText());
 	}
 	
-	/**
-	 * Takes an ambiguous name string and returns the Pokemon name.
-	 * @param fullname either "Pokemon name" or "nickname (Pokemon name)"
-	 * @return The original string if it doesn't contain brackets, else what is inside the brackets.
-	 */
-	private String getNameFromPossibleNickname(String fullname) {
-		if (!fullname.contains("(")) {
-			return fullname;
-		}
-		else {
-			int idx = fullname.indexOf("(");
-			return substringToFirst(fullname,idx+1,")");
-		}
+	public void updateBattleLog() {
+		battlelog.setLogText(driver.findElement(By.cssSelector("div.battle-log")).getText());
 	}
 	
-	/**
-	 * Returns what Pokemon was on owner's side of the field at the start of turn.
-	 * @param owner Whose side of the field we are checking
-	 * @param turn Which turn we are interested in
-	 * @param resolveNickname Set to false to retrieve the nickname of the Pokemon rather than species
-	 * @return String - Pokemon name, empty string on failure.
-	 */
-	public String getCurrentPokemonAtTurn(String owner, int turn, boolean resolveNickname) {
-		String sentOutStr = owner + " sent out ";
-		if (turn == 0) {
-			turn = 1;
-		}
-		while (turn >= 0) {
-			--turn;
-			String text = getTurnText(turn);
-			int idx = text.lastIndexOf(sentOutStr);
-			String nameWithPossibleNickname = substringToFirst(text,idx+sentOutStr.length(),"!\n");
-			if (idx != -1 && resolveNickname) {
-				return getNameFromPossibleNickname(nameWithPossibleNickname);
-			}
-			else if (idx != -1) {
-				if (nameWithPossibleNickname.contains("(")) {
-					return substringToFirst(nameWithPossibleNickname, 0, " (");
-				}
-				return substringToFirst(nameWithPossibleNickname, 0, "!\n");
-			}
-		}
-		return "";
-	}
-	
-	/**
-	 * Returns what Pokemon was last sent out on owner's side of the field.
-	 * <b>NOTE: THIS HAS PROBLEMS WITH ZOROARK</b> (as does Showdown itself)
-	 * @param owner Whose side of the field we are checking
-	 * @param resolveNickname Set to false to retrieve the nickname of the Pokemon rather than species
-	 * @return String - Pokemon name, empty string on failure.
-	 */
-	public String getCurrentPokemon(String owner, boolean resolveNickname) {
-		String side = "mySide";
-		if (owner.equals(getOpponentName())) {
-			side = "yourSide";
-		}
-		String pokeField = "name";
-		if (resolveNickname) {
-			pokeField = "species";
-		}
-		
-		// this is probably bad
-		String command = 
-				("if (curRoom.battle.%side.active[0] != null)\n" +
-				"	return curRoom.battle.%side.active[0].%field;\n" +
-				"else if (curRoom.battle.%side.lastPokemon != null)\n" + 
-				"	return curRoom.battle.%side.lastPokemon.%field;\n"+
-				"return '';")
-				.replace("%side",side).replace("%field",pokeField);
-		String result = javascript(command);
-		return result;
-	}
-	
-	/**
-	 * Returns what Pokemon was last sent out on our side of the field.
-	 * <b>NOTE: THIS HAS PROBLEMS WITH ZOROARK</b> (as does Showdown itself)
-	 * @param resolveNickname Set to false to retrieve the nickname of the Pokemon rather than species
-	 * @return String - Pokemon name, empty string on failure.
-	 */
-	public String getCurrentPokemon(boolean resolveNickname) {
-		return getCurrentPokemon(getUserName(), resolveNickname);
-	}
-	
-	/**
-	 * Returns what Pokemon was last sent out on the opponent's side of the field.
-	 * <b>NOTE: THIS HAS PROBLEMS WITH ZOROARK</b> (as does Showdown itself)
-	 * @param resolveNickname Set to false to retrieve the nickname of the Pokemon rather than species
-	 * @return String - Pokemon name, empty string on failure.
-	 */
-	public String getCurrentOpponentPokemon(boolean resolveNickname) {
-		return getCurrentPokemon(getOpponentName(), resolveNickname);
-	}
-	
-	/**
-	 * Gets the format of the game we are currently in.
-	 * @return String - Format, eg "OU (current)"
-	 */
-	public String getFormat() {
-		String blt = getBattleLogText();
-		return (substringToFirst(blt, blt.indexOf("Format: ")+8, "\n"));
-	}
-	
-	/**
-	 * Gets the clauses that are active in the game we are currently in.
-	 * @return String List - Clauses, eg "Sleep Clause"
-	 */
-	public List<String> getClauses() {
-		String blt = getTurnText(0);
-		ArrayList<String> clauses = new ArrayList<String>();
-		int idx = 0;
-		while ((idx=blt.indexOf("Rule: ",idx)) != -1) {
-			clauses.add(substringToFirst(blt,idx+6,"\n"));
-			idx += 6;
-		}
-		return clauses;
+	public BattleLog getBattleLog() {
+		return battlelog;
 	}
 }
