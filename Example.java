@@ -56,17 +56,22 @@ public class Example  {
 	        System.out.println("Opponent's Pokemon: "+showdown.getCurrentPokemon(OPP, false));
 	             
 	        System.out.println("Moves:");
-	        printlist(showdown.getMoves(showdown.getCurrentPokemon(true)));
+	        String poke = showdown.getCurrentPokemon(true);
+	        printlist(showdown.getMoves(poke));
 	        for (String move : showdown.getMoves()) {
 	        	System.out.println(move + ": " + showdown.getMoveRemainingPP(move) + " PP");
 	        }
+	        System.out.println("Gender: '"+showdown.getGender(poke, SELF)+"'");
+	        System.out.println("Ability: "+showdown.getAbility(poke, SELF));
+	        System.out.println("Item: "+showdown.getItem(poke));
+	        System.out.println("Their Ability: "+showdown.getAbility(showdown.getCurrentPokemon(OPP, true), OPP));
 	        
 	        System.out.println("Format: "+showdown.getBattleLog().getFormat()+"\nClauses: ");
 	        printlist(showdown.getBattleLog().getClauses());
 	        
 	        TurnEndStatus s = TurnEndStatus.UNKNOWN;
 	        while (s != TurnEndStatus.WON && s != TurnEndStatus.LOST) {
-	        	if (showdown.getBattleLog().getLogText().contains("gsquit")) {
+	        	if (showdown.getBattleLog().contains("gsquit")) {
 	        		break;
 	        	}
 	        	ourTeam = showdown.getSwitchableTeam();

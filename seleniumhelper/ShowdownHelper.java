@@ -5,6 +5,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.openqa.selenium.By;
@@ -497,15 +498,21 @@ public class ShowdownHelper extends Helper {
 	 * @param pokemon The species name of the Pokemon
 	 * @param owner Which team the Pokemon is on
 	 * @param attribute Which javascript attribute we are trying to get
+	 * @param json True if you want to return a JSON stringified object.
 	 * @return Object - returned Javascript object (may be null)
 	 */
-	private Object getPokemonAttribute(String pokemon, String owner, String attribute) {
+	private Object getPokemonAttribute(String pokemon, String owner, String attribute, boolean json) {
 		int slot = getSlotForSpecies(pokemon, owner);
 		String side = "mySide";
 		if (owner.equals(getOpponentName())) {
 			side = "yourSide";
 		}
-		return javascript("var p=curRoom.battle[arguments[0]].pokemon[arguments[1]]; if (p!=null) return p[arguments[2]];", side, slot, attribute);
+		if (!json) {
+			return javascript("var p=curRoom.battle[arguments[0]].pokemon[arguments[1]]; if (p!=null) return p[arguments[2]];", side, slot, attribute);
+		}
+		else {
+			return javascript("var p=curRoom.battle[arguments[0]].pokemon[arguments[1]]; if (p!=null) return JSON.stringify(p[arguments[2]]);", side, slot, attribute);
+		}
 	}
 	
 	/**
@@ -513,10 +520,10 @@ public class ShowdownHelper extends Helper {
 	 * @param pokemon The species name of the Pokemon
 	 * @param owner Which team the Pokemon is on
 	 * @return String - Pokemon status. 3 character abbreviation, lower case.
-	 * Can return: <b>'tox', 'psn', 'frz', 'par', 'brn'.</b>
+	 * Can return: <b>'tox', 'psn', 'frz', 'par', 'brn', or null if no status.</b>
 	 */
 	public String getStatus(String pokemon, String owner) {
-		return (String)getPokemonAttribute(pokemon, owner, "status");
+		return (String)getPokemonAttribute(pokemon, owner, "status", false);
 	}
 	
 	/**
@@ -545,7 +552,7 @@ public class ShowdownHelper extends Helper {
 	 * @return True if fainted, false otherwise.
 	 */
 	public boolean isFainted(String pokemon, String owner) {
-		return (Boolean)getPokemonAttribute(pokemon,owner,"fainted");
+		return (Boolean)getPokemonAttribute(pokemon,owner,"fainted",false);
 	}
 	
 	/**
@@ -558,7 +565,7 @@ public class ShowdownHelper extends Helper {
 	 * the exact HP value.
 	 */
 	public int getHP(String pokemon, String owner) {
-		return ((Long)getPokemonAttribute(pokemon,owner,"hp")).intValue();
+		return ((Long)getPokemonAttribute(pokemon,owner,"hp",false)).intValue();
 	}
 	
 	/**
@@ -571,7 +578,7 @@ public class ShowdownHelper extends Helper {
 	 * the exact HP value.
 	 */
 	public int getMaxHP(String pokemon, String owner) {
-		return ((Long)getPokemonAttribute(pokemon,owner,"maxhp")).intValue();
+		return ((Long)getPokemonAttribute(pokemon,owner,"maxhp",false)).intValue();
 	}
 	
 	/**
@@ -599,6 +606,84 @@ public class ShowdownHelper extends Helper {
 			return boosts;
 		}
 		return boosts;
+	}
+	
+	/**
+	 * Returns the full name of the ability of the specified Pokemon.
+	 * @param pokemon The species name of the Pokemon
+	 * @param owner Which team the Pokemon is on
+	 * @return Ability name, or null if no ability found.<br/>
+	 * Note that in most circumstances, this will be null when <code>owner</code> is the opponent.
+	 * It only returns correctly if the target Pokemon has <b>only one possible ability.</b>
+	 */
+	public String getAbility(String pokemon, String owner) {
+		return getAbility(pokemon, owner, false);
+	}
+	
+	/**
+	 * Returns the name of the ability of the specified Pokemon.
+	 * @param pokemon The species name of the Pokemon
+	 * @param owner Which team the Pokemon is on
+	 * @param getShortNames If true, shortnames will be returned. (ie "shedskin" not "Shed Skin")
+	 * @return Ability name, or null if no ability found.<br/>
+	 * Note that in most circumstances, this will be null when <code>owner</code> is the opponent.
+	 * It only returns correctly if the target Pokemon has <b>only one possible ability.</b>
+	 */
+	public String getAbility(String pokemon, String owner, boolean getShortName) {
+		String ability = (String)getPokemonAttribute(pokemon, owner, "ability", false);
+		if (ability.equals("")) {
+			try {
+				JSONObject jo = new JSONObject((String)getPokemonAttribute(pokemon, owner, "abilities",true));
+				ability = jo.getString("0");
+				if (jo.length() != 1) {
+					return null;
+				}
+			}
+			catch (JSONException e) {
+				return null;
+			}
+		}
+		
+		if (getShortName) {
+			return ability;
+		}
+		return (String)javascript("return Tools.getAbility(arguments[0]).name;", ability);
+	}
+	
+	/**
+	 * Returns the full name of the item held by the specified Pokemon on our team.
+	 * @param pokemon The species name of the Pokemon
+	 * @return Item name, or empty string if no item.
+	 */
+	public String getItem(String pokemon) {
+		return getItem(pokemon, false);
+	}
+	
+	/**
+	 * Returns the name of the item held by the specified Pokemon on our team.
+	 * @param pokemon The species name of the Pokemon
+	 * @param getShortNames If true, shortnames will be returned. (ie "griseousorb" not "Griseous Orb")
+	 * @return Item name, or null if no item.
+	 */
+	public String getItem(String pokemon, boolean getShortName) {
+		String item = (String)getPokemonAttribute(pokemon, getUserName(), "item", false);
+		if (item.equals("")) {
+			return null;
+		}
+		else if (getShortName) {
+			return item;
+		}
+		return (String)javascript("return Tools.getItem(arguments[0]).name;", item);
+	}
+	
+	/**
+	 * Gets the specified Pokemon's gender.
+	 * @param pokemon The species name of the Pokemon
+	 * @param owner Which team the Pokemon is on
+	 * @return "M" for male, "F" for female, or empty string if genderless.
+	 */
+	public String getGender(String pokemon, String owner) {
+		return (String)getPokemonAttribute(pokemon, owner, "gender", false);
 	}
 	
 	/**
