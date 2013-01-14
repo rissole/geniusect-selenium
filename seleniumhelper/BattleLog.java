@@ -183,7 +183,7 @@ public class BattleLog {
 	 */
 	public String getFormat() {
 		String blt = getLogText();
-		return (substringToFirst(blt, blt.indexOf("Format: ")+8, "\n"));
+		return (substringToFirst(blt, blt.indexOf("Format:\n")+8, "\n"));
 	}
 	
 	/**
@@ -193,10 +193,14 @@ public class BattleLog {
 	public List<String> getClauses() {
 		String blt = getTurnText(0);
 		ArrayList<String> clauses = new ArrayList<String>();
-		int idx = 0;
-		while ((idx=blt.indexOf("Rule: ",idx)) != -1) {
-			clauses.add(substringToFirst(blt,idx+6,"\n"));
-			idx += 6;
+		String[] lines = blt.split("\n");
+		for (int i = 0; i < lines.length; ++i) {
+			if (lines[i].lastIndexOf("Clause") != -1) {
+				clauses.add(lines[i]);
+			}
+			else if (clauses.size() != 0) {
+				break;
+			}
 		}
 		return clauses;
 	}
