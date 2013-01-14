@@ -687,6 +687,16 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	/**
+	 * Gets the specified Pokemon's level.
+	 * @param pokemon The species name of the Pokemon
+	 * @param owner Which team the Pokemon is on
+	 * @return int - Pokemon's level.
+	 */
+	public int getLevel(String pokemon, String owner) {
+		return ((Long)getPokemonAttribute(pokemon, owner, "level", false)).intValue();
+	}
+	
+	/**
 	 * Waits until the battle log contains the specified text (up to 5 minutes)
 	 * @param message String to wait for.
 	 */
