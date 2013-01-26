@@ -10,11 +10,17 @@ import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.firefox.FirefoxDriver;
 
+import seleniumhelper.BattleLog;
 import seleniumhelper.ShowdownHelper;
 import seleniumhelper.ShowdownHelper.TurnEndStatus;
 
 public class Example  {
     public static void main(String[] args) throws Exception {
+    	//testBattleLogFile();
+    	testBattle();
+    }
+    
+    public static void testBattle() throws Exception {
     	//System.setProperty("webdriver.firefox.profile", "default");
     	FirefoxDriver driver = new FirefoxDriver();
     	// wait up to 10 seconds for elements to load
@@ -25,7 +31,7 @@ public class Example  {
         //showdown.sleep(60000);
         showdown.login("geniusecttest"+(new Random()).nextInt(100000), "");
         showdown.createTeam("Shuckle @ Rocky Helmet\nTrait: Sturdy\nEVs: 252 SDef / 252 HP / 4 Atk\nCareful Nature\n- Acupressure\n- Power Split\n- Rest\n- Rollout", "t");
-        showdown.findBattle("Ubers (suspect test)", "t");
+        showdown.findBattle("Ubers", "t");
         
         // WAIT FOR BATTLE START
         TurnEndStatus startStatus = showdown.waitForBattleStart();
@@ -71,7 +77,7 @@ public class Example  {
 	        
 	        TurnEndStatus s = TurnEndStatus.UNKNOWN;
 	        while (s != TurnEndStatus.WON && s != TurnEndStatus.LOST) {
-	        	if (showdown.getBattleLog().contains("gsquit")) {
+	        	if (showdown.getBattleLog().contains("gsquit", false)) {
 	        		break;
 	        	}
 	        	ourTeam = showdown.getSwitchableTeam();
@@ -129,5 +135,24 @@ public class Example  {
 			e.printStackTrace();
 		}
     	
+    }
+    
+    public static void testBattleLogFile() {
+    	String text = "";
+		try {
+			Scanner r = new Scanner(new File("battlesample_html.log"));
+			while (r.hasNextLine()) {
+				text += r.nextLine() + "\n";
+			}
+		}
+		catch (Exception e) {
+			return;
+		}
+		BattleLog bl = new BattleLog(text);
+		System.out.println(bl.getCurrentPokemonAtTurn("RODAN", 5, false));
+		System.out.println(bl.getCurrentPokemonAtTurn("RODAN", 6, false));
+		System.out.println(bl.getCurrentPokemonAtTurn("Cloak", 6, true));
+		System.out.println(bl.getCurrentPokemonAtTurn("Cloak", 6, false));
+		System.out.println(bl.getCurrentTurn());
     }
 }

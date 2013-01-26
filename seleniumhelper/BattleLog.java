@@ -1,26 +1,44 @@
 package seleniumhelper;
+import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.html.dom.HTMLDocumentImpl;
+import org.cyberneko.html.parsers.DOMFragmentParser;
+import org.w3c.dom.DocumentFragment;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.w3c.dom.html.HTMLDocument;
+import org.xml.sax.InputSource;
 
 /**
  * Pokemon Showdown battle log interpreter. Provides functions to assist in analysing
  * and reading a battle log.<br/>
- * Initialise it with a String - the battle log text.<br/>
+ * Initialise it with a String - the battle log HTML (div.battle-log > div.inner).<br/>
  * Update it as the battle updates with <code>setLogText</code><br/>
  * Note this can also be used on arbitrary strings, for example, a log saved in a text file.
  * @author burse
  */
 public class BattleLog {
 	
+	// Battle log text stripped of HTML and chat messages
 	private String battleLogText;
 	
-	public BattleLog(String logText) {
-		setLogText(logText);
+	// unstripped HTML
+	private String battleLogHTML; 
+	
+	/**
+	 * Creates a new battle log interpreter.
+	 * @param logHTML HTML of the battle log element (css=div.battle-log > div.inner).
+	 */
+	public BattleLog(String logHTML) {
+		setLogText(logHTML);
 	}
 	
-	public void setLogText(String logText) {
-		battleLogText = logText;
+	public void setLogText(String logHTML) {
+		battleLogHTML = logHTML;
+		battleLogText = stripHTML(getLogHTML(true));
 	}
 	
 	/**
@@ -49,11 +67,13 @@ public class BattleLog {
 		}
 		
 		String turnString = "";
-		if (Pattern.matches("^Turn (\\d+)$", cTT)) {
-			turnString = cTT.substring(5);
+		Pattern p = Pattern.compile("^Turn (\\d+)$", Pattern.MULTILINE);
+		Matcher m = p.matcher(cTT);
+		if (m.find()) {
+			turnString = m.group(1);
 		}
 		else {
-			turnString = substringToFirst(cTT, 5, "\n");
+			return 0;
 		}
 		
 		try {
@@ -66,33 +86,53 @@ public class BattleLog {
 	
 	/**
 	 * Gets the whole text in the Battle Log.
-	 * @return String - battle log text, including new lines.
+	 * @return String - battle log text, including new lines, CHAT MESSAGES STRIPPED.
 	 */
 	public String getLogText() {
 		return battleLogText;
 	}
 	
 	/**
+	 * Gets the HTML in the Battle Log.
+	 * @param stripChats - if true, chat messages will be stripped from the returned HTML.
+	 * @return String - battle log in raw HTML form.
+	 */
+	public String getLogHTML(boolean stripChats) {
+		if (!stripChats) {
+			return battleLogHTML;
+		}
+		else {
+			return battleLogHTML.replaceAll("<div class=\"chat\">.*?</div>", "");
+		}
+	}
+	
+	/**
 	 * Returns true if the battle log contains the specified string.
 	 * @param s The String to check for.
+	 * @param ignoreChats Set to true to ignore player chat messages.
 	 * @return True if and only if the battle log contains the string specified.
 	 */
-	public boolean contains(String s) {
-		return (getLogText().lastIndexOf(s) != -1);
+	public boolean contains(String s, boolean ignoreChats) {
+		if (!ignoreChats) {
+			return (getLogText().lastIndexOf(s) != -1);
+		}
+		else {
+			return (stripHTML(getLogHTML(true)).lastIndexOf(s) != -1);
+		}
 	}
 	
 	/**
 	 * Gets the text of the current turn we are in.
-	 * @return String - current turn text, or empty string if a turn hasn't started yet.
+	 * @return String - current turn text, IGNORING CHAT MESSAGES, or empty string if a turn hasn't started yet.
 	 */
 	public String getCurrentTurnText() {
-		String battleText = getLogText();
-		int currentTurnIdx = battleText.lastIndexOf("Turn ");
+		String battleText = getLogHTML(true);
+		int currentTurnIdx = battleText.lastIndexOf("<h2>Turn ");
 		if (currentTurnIdx == -1) {
 			return "";
 		}
 		else {
-			return battleText.substring(currentTurnIdx);
+			return stripHTML(battleText.substring(currentTurnIdx));
 		}
 	}
 	
@@ -115,20 +155,20 @@ public class BattleLog {
 			return getCurrentTurnText();
 		}
 		
-		String battleText = getLogText();
+		String battleText = getLogHTML(true);
 		int turnIdx;
 		if (turn == 0) {
-			turnIdx = battleText.indexOf("Turn 1");
-			return battleText.substring(0, turnIdx);
+			turnIdx = battleText.indexOf("<h2>Turn 1</h2>");
+			return stripHTML(battleText.substring(0, turnIdx));
 		}
-		String turnStr = "Turn " + turn;
+		String turnStr = "<h2>Turn " + turn + "</h2>";
 		turnIdx = battleText.indexOf(turnStr);
-		int nextTurnIdx = battleText.indexOf("Turn", turnIdx+turnStr.length());
+		int nextTurnIdx = battleText.indexOf("<h2>Turn", turnIdx+turnStr.length());
 		if (turnIdx == -1 || nextTurnIdx == -1) {
 			return "";
 		}
 		else {
-			return battleText.substring(turnIdx, nextTurnIdx);
+			return stripHTML(battleText.substring(turnIdx, nextTurnIdx));
 		}
 	}
 	
@@ -162,16 +202,19 @@ public class BattleLog {
 		while (turn >= 0) {
 			--turn;
 			String text = getTurnText(turn);
-			int idx = text.lastIndexOf(sentOutStr);
-			String nameWithPossibleNickname = substringToFirst(text,idx+sentOutStr.length(),"!\n");
-			if (idx != -1 && resolveNickname) {
-				return getNameFromPossibleNickname(nameWithPossibleNickname);
-			}
-			else if (idx != -1) {
-				if (nameWithPossibleNickname.contains("(")) {
-					return substringToFirst(nameWithPossibleNickname, 0, " (");
+			Pattern p = Pattern.compile("^"+sentOutStr+"(\\w+|[\\w ]+ \\(\\w+\\))!$", Pattern.MULTILINE | Pattern.DOTALL);
+			Matcher m = p.matcher(text);
+			if (m.find()) {
+				String nameWithPossibleNickname = m.group(1);
+				if (resolveNickname) {
+					return getNameFromPossibleNickname(nameWithPossibleNickname);
 				}
-				return substringToFirst(nameWithPossibleNickname, 0, "!\n");
+				else {
+					if (nameWithPossibleNickname.contains("(")) {
+						return substringToFirst(nameWithPossibleNickname, 0, " (");
+					}
+					return nameWithPossibleNickname;
+				}
 			}
 		}
 		return "";
@@ -183,7 +226,7 @@ public class BattleLog {
 	 */
 	public String getFormat() {
 		String blt = getLogText();
-		return (substringToFirst(blt, blt.indexOf("Format:\n")+8, "\n"));
+		return (substringToFirst(blt, blt.indexOf("Format: ")+8, "\n"));
 	}
 	
 	/**
@@ -195,13 +238,46 @@ public class BattleLog {
 		ArrayList<String> clauses = new ArrayList<String>();
 		String[] lines = blt.split("\n");
 		for (int i = 0; i < lines.length; ++i) {
-			if (lines[i].lastIndexOf("Clause") != -1) {
-				clauses.add(lines[i]);
+			if (lines[i].startsWith("Battle between")) {
+				break;
+			}
+			if (lines[i].indexOf("Clause") != -1) {
+				clauses.add(substringToFirst(lines[i],0,":"));
 			}
 			else if (clauses.size() != 0) {
 				break;
 			}
 		}
 		return clauses;
+	}
+	
+	/**
+	 * Strips the HTML of the specified string, with new lines between each element.
+	 * logHTML should be innerHTML of some battle log element.
+	 */
+	private String stripHTML(String logHTML) {
+		HTMLDocument document = new HTMLDocumentImpl();
+		DocumentFragment doc;
+		DOMFragmentParser parser = new DOMFragmentParser();
+		
+		doc = document.createDocumentFragment();
+		InputSource inputSource = new InputSource( new ByteArrayInputStream( logHTML.getBytes() ) );
+
+		try {
+			parser.parse(inputSource, doc);
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+			return "";
+		}
+		
+		StringBuffer text = new StringBuffer();
+		NodeList list = doc.getChildNodes();
+		for (int i = 0; i < list.getLength(); ++i) {
+			Node node = list.item(i);
+			if (node.getTextContent().trim().length() > 0)
+				text.append(node.getTextContent() + "\n");
+		}
+		return text.toString();
 	}
 }

@@ -163,7 +163,7 @@ public class ShowdownHelper extends Helper {
 	 */
 	public void surrender() {
 		sendMessage("/surrender");
-		waitForBattleLogContains(getOpponentName() + " won the battle!");
+		waitForBattleLogContains(getOpponentName() + " won the battle!", true);
 	}
 	
 	/**
@@ -257,7 +257,7 @@ public class ShowdownHelper extends Helper {
 		}
 		updateBattleLog();
 		if (gameOver) {
-			if (battlelog.contains(getUserName() + " won the battle!")) {
+			if (battlelog.contains(getUserName() + " won the battle!", true)) {
 				return TurnEndStatus.WON;
 			}
 			else {
@@ -700,10 +700,10 @@ public class ShowdownHelper extends Helper {
 	 * Waits until the battle log contains the specified text (up to 5 minutes)
 	 * @param message String to wait for.
 	 */
-	public void waitForBattleLogContains(final String message) {
+	public void waitForBattleLogContains(final String message, final boolean ignoreChats) {
 		(new WebDriverWait(driver, 300)).until(new ExpectedCondition<Boolean>() {
            public Boolean apply(WebDriver d) {
-               return battlelog.contains(message);
+               return battlelog.contains(message, ignoreChats);
            }
        });
 	}
@@ -814,11 +814,11 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	public void initBattleLog() {
-		battlelog = new BattleLog(driver.findElement(By.cssSelector("div.battle-log")).getText());
+		battlelog = new BattleLog(driver.findElement(By.cssSelector("div.battle-log > div.inner")).getAttribute("innerHTML"));
 	}
 	
 	public void updateBattleLog() {
-		battlelog.setLogText(driver.findElement(By.cssSelector("div.battle-log")).getText());
+		battlelog.setLogText(driver.findElement(By.cssSelector("div.battle-log > div.inner")).getAttribute("innerHTML"));
 	}
 	
 	public BattleLog getBattleLog() {
