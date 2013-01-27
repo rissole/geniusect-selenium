@@ -280,4 +280,21 @@ public class BattleLog {
 		}
 		return text.toString();
 	}
+	
+	/**
+	 * Gets the names of the players from the battle log.
+	 * @return String Array - player's names, or null if the log doesn't contain the necessary line
+	 * ("Battle between (player1) and (player2) started!")
+	 */
+	public String[] getPlayerNames() {
+		Pattern p = Pattern.compile("^Battle between (.+?) and (.+?) started!$", Pattern.MULTILINE);
+		Matcher m = p.matcher(getLogText());
+		if (m.find()) {
+			String[] names = new String[2];
+			names[0] = m.group(1);
+			names[1] = m.group(2);
+			return names;
+		}
+		return null;
+	}
 }
