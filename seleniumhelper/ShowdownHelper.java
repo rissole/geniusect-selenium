@@ -631,7 +631,7 @@ public class ShowdownHelper extends Helper {
 	 */
 	public String getAbility(String pokemon, String owner, boolean getShortName) {
 		String ability = (String)getPokemonAttribute(pokemon, owner, "ability", false);
-		if (ability.equals("")) {
+		if (ability != null && ability.equals("")) {
 			try {
 				JSONObject jo = new JSONObject((String)getPokemonAttribute(pokemon, owner, "abilities",true));
 				ability = jo.getString("0");
@@ -667,7 +667,7 @@ public class ShowdownHelper extends Helper {
 	 */
 	public String getItem(String pokemon, boolean getShortName) {
 		String item = (String)getPokemonAttribute(pokemon, getUserName(), "item", false);
-		if (item.equals("")) {
+		if (item == null || item.equals("")) {
 			return null;
 		}
 		else if (getShortName) {
