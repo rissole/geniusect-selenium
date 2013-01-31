@@ -30,6 +30,9 @@ public class ShowdownHelper extends Helper {
 	
 	private BattleLog battlelog;
 	
+	// Have we pressed the Kick Inactive Player button?
+	private boolean battleTimerOn;
+	
 	/**
 	 * Creates an instance of helper functions for Pokemon Showdown automation
 	 * @param driver The WebDriver that will be used for automation
@@ -41,6 +44,7 @@ public class ShowdownHelper extends Helper {
 		this.rootURL = rootURL;
 		this.currentUser = "";
 		this.battlelog = null;
+		this.battleTimerOn = false;
 	}
 	
 	/**
@@ -52,6 +56,7 @@ public class ShowdownHelper extends Helper {
 		rootURL = "http://play.pokemonshowdown.com";
 		this.currentUser = "";
 		this.battlelog = null;
+		this.battleTimerOn = false;
 	}
 	
 	/**
@@ -115,7 +120,10 @@ public class ShowdownHelper extends Helper {
 		if (isElementPresent(By.id("messagebox"))) {
 			throw new InvalidTeamException(driver.findElement(By.cssSelector("#messagebox > div")).getText());
 		}
+		
 		initBattleLog();
+		battleTimerOn = false;
+		
 		if (driver.findElement(By.cssSelector("div.whatdo")).getText().contains("How will you start the battle?")) {
 			return TurnEndStatus.SWITCH;
 		}
@@ -172,6 +180,7 @@ public class ShowdownHelper extends Helper {
 	public void kickInactivePlayer() {
 		if (isElementPresent(By.cssSelector("div.replay-controls > button"))) {
 			clickAt(By.cssSelector("div.replay-controls > button"));
+			battleTimerOn = true;
 		}
 	}
 	
@@ -247,7 +256,7 @@ public class ShowdownHelper extends Helper {
 		int waited = 0;
 		boolean gameOver = false;
 		while (!isElementPresent(By.cssSelector("div.whatdo")) && !gameOver) {
-			if (kickAfterSeconds != 0 && waited >= kickAfterSeconds*1000) {
+			if (!battleTimerOn && kickAfterSeconds != 0 && waited >= kickAfterSeconds*1000) {
 				kickInactivePlayer();
 				kickAfterSeconds = 0;
 			}
