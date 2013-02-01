@@ -6,13 +6,14 @@ import java.util.Random;
 import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
 
+
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.firefox.FirefoxDriver;
 
-import seleniumhelper.BattleLog;
 import seleniumhelper.ShowdownHelper;
 import seleniumhelper.ShowdownHelper.TurnEndStatus;
+import seleniumhelper.loginterpret.BattleLog;
 
 public class Example  {
     public static void main(String[] args) throws Exception {

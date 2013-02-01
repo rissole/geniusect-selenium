@@ -1,4 +1,4 @@
-package seleniumhelper;
+package seleniumhelper.loginterpret;
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.List;

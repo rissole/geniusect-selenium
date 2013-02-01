@@ -5,6 +5,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -15,6 +16,8 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.openqa.selenium.support.ui.WebDriverWait;
+
+import seleniumhelper.loginterpret.BattleLog;
 
 /**
  * Selenium helper functions specifically for Pokemon Showdown.
@@ -180,7 +183,7 @@ public class ShowdownHelper extends Helper {
 	public void kickInactivePlayer() {
 		if (isElementPresent(By.cssSelector("div.replay-controls > button"))) {
 			clickAt(By.cssSelector("div.replay-controls > button"));
-			battleTimerOn = true;
+			battleTimerOn = !battleTimerOn;
 		}
 	}
 	
