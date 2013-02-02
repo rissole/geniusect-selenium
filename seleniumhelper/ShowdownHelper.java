@@ -515,6 +515,9 @@ public class ShowdownHelper extends Helper {
 	 */
 	private Object getPokemonAttribute(String pokemon, String owner, String attribute, boolean json) {
 		int slot = getSlotForSpecies(pokemon, owner);
+		if (slot == -1) {
+			return null;
+		}
 		String side = "mySide";
 		if (owner.equals(getOpponentName())) {
 			side = "yourSide";
@@ -636,7 +639,7 @@ public class ShowdownHelper extends Helper {
 	 * Returns the name of the ability of the specified Pokemon.
 	 * @param pokemon The species name of the Pokemon
 	 * @param owner Which team the Pokemon is on
-	 * @param getShortNames If true, shortnames will be returned. (ie "shedskin" not "Shed Skin")
+	 * @param getShortName If true, shortnames will be returned. (ie "shedskin" not "Shed Skin")
 	 * @return Ability name, or null if no ability found.<br/>
 	 * Note that in most circumstances, this will be null when <code>owner</code> is the opponent.
 	 * It only returns correctly if the target Pokemon has <b>only one possible ability.</b>
@@ -665,20 +668,22 @@ public class ShowdownHelper extends Helper {
 	/**
 	 * Returns the full name of the item held by the specified Pokemon on our team.
 	 * @param pokemon The species name of the Pokemon
+	 * @param owner Which team the Pokemon is on
 	 * @return Item name, or empty string if no item.
 	 */
-	public String getItem(String pokemon) {
-		return getItem(pokemon, false);
+	public String getItem(String pokemon, String owner) {
+		return getItem(pokemon, owner, false);
 	}
 	
 	/**
 	 * Returns the name of the item held by the specified Pokemon on our team.
 	 * @param pokemon The species name of the Pokemon
-	 * @param getShortNames If true, shortnames will be returned. (ie "griseousorb" not "Griseous Orb")
+	 * @param owner Which team the Pokemon is on
+	 * @param getShortName If true, shortnames will be returned. (ie "griseousorb" not "Griseous Orb")
 	 * @return Item name, or null if no item.
 	 */
-	public String getItem(String pokemon, boolean getShortName) {
-		String item = (String)getPokemonAttribute(pokemon, getUserName(), "item", false);
+	public String getItem(String pokemon, String owner, boolean getShortName) {
+		String item = (String)getPokemonAttribute(pokemon, owner, "item", false);
 		if (item == null || item.equals("")) {
 			return null;
 		}
