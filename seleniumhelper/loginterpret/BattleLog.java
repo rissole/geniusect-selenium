@@ -42,6 +42,13 @@ public class BattleLog {
 	}
 	
 	/**
+	 * <code>(.+|.+ \\(.+\\))</code><br/>
+	 * Has 1 group - either "species name", or "nickname (species name)".
+	 * Good to put into <code>getNameFromPossibleNickname</code>
+	 */
+	public static String POKEMON_NAME_PATTERN = "(.+|.+ \\(.+\\))";
+	
+	/**
 	 * Gets the substring, starting at startIndex, up to the first instance of 'stop'.
 	 * @param s String to search
 	 * @param startIndex Index to start from
@@ -151,24 +158,33 @@ public class BattleLog {
 	 * @return String - the text from that turn, including "Turn (turn number)" heading
 	 */
 	public String getTurnText(int turn) {
+		return stripHTML(getTurnHTML(turn));
+	}
+	
+	/**
+	 * Gets the HTML of the specified turn.
+	 * @param turn The turn. Turn 0 is considered to be the initial announcement of team, format, etc.
+	 * @return String - the HTML from that turn, including "Turn (turn number)" heading
+	 */
+	public String getTurnHTML(int turn) {
 		if (turn == getCurrentTurn()) {
 			return getCurrentTurnText();
 		}
 		
-		String battleText = getLogHTML(true);
+		String battleHTML = getLogHTML(true);
 		int turnIdx;
 		if (turn == 0) {
-			turnIdx = battleText.indexOf("<h2>Turn 1</h2>");
-			return stripHTML(battleText.substring(0, turnIdx));
+			turnIdx = battleHTML.indexOf("<h2>Turn 1</h2>");
+			return stripHTML(battleHTML.substring(0, turnIdx));
 		}
 		String turnStr = "<h2>Turn " + turn + "</h2>";
-		turnIdx = battleText.indexOf(turnStr);
-		int nextTurnIdx = battleText.indexOf("<h2>Turn", turnIdx+turnStr.length());
+		turnIdx = battleHTML.indexOf(turnStr);
+		int nextTurnIdx = battleHTML.indexOf("<h2>Turn", turnIdx+turnStr.length());
 		if (turnIdx == -1 || nextTurnIdx == -1) {
 			return "";
 		}
 		else {
-			return stripHTML(battleText.substring(turnIdx, nextTurnIdx));
+			return battleHTML.substring(turnIdx, nextTurnIdx);
 		}
 	}
 	
@@ -177,7 +193,7 @@ public class BattleLog {
 	 * @param fullname either "Pokemon name" or "nickname (Pokemon name)"
 	 * @return The original string if it doesn't contain brackets, else what is inside the brackets.
 	 */
-	private String getNameFromPossibleNickname(String fullname) {
+	public static String getNameFromPossibleNickname(String fullname) {
 		if (!fullname.contains("(")) {
 			return fullname;
 		}
@@ -202,7 +218,7 @@ public class BattleLog {
 		while (turn >= 0) {
 			--turn;
 			String text = getTurnText(turn);
-			Pattern p = Pattern.compile("^"+sentOutStr+"(\\w+|[\\w ]+ \\(\\w+\\))!$", Pattern.MULTILINE | Pattern.DOTALL);
+			Pattern p = Pattern.compile("^"+sentOutStr+POKEMON_NAME_PATTERN+"!$", Pattern.MULTILINE);
 			Matcher m = p.matcher(text);
 			if (m.find()) {
 				String nameWithPossibleNickname = m.group(1);
@@ -255,7 +271,7 @@ public class BattleLog {
 	 * Strips the HTML of the specified string, with new lines between each element.
 	 * logHTML should be innerHTML of some battle log element.
 	 */
-	private String stripHTML(String logHTML) {
+	private static String stripHTML(String logHTML) {
 		HTMLDocument document = new HTMLDocumentImpl();
 		DocumentFragment doc;
 		DOMFragmentParser parser = new DOMFragmentParser();
