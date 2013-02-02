@@ -70,7 +70,7 @@ public class Example  {
 	        }
 	        System.out.println("Gender: '"+showdown.getGender(poke, SELF)+"'");
 	        System.out.println("Ability: "+showdown.getAbility(poke, SELF));
-	        System.out.println("Item: "+showdown.getItem(poke));
+	        System.out.println("Item: "+showdown.getItem(poke, SELF));
 	        System.out.println("Their Ability: "+showdown.getAbility(showdown.getCurrentPokemon(OPP, true), OPP));
 	        
 	        System.out.println("Format: "+showdown.getBattleLog().getFormat()+"\nClauses: ");
