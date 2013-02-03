@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.openqa.selenium.By;
@@ -611,6 +610,7 @@ public class ShowdownHelper extends Helper {
 		String jsonBoosts = (String)javascript("return JSON.stringify(curRoom.battle[arguments[0]].active[0].boosts);", side);
 		try {
 			JSONObject jo = new JSONObject(jsonBoosts);
+			@SuppressWarnings("unchecked")
 			Iterator<String> itr = jo.keys();
 			while (itr.hasNext()) {
 				String k = itr.next();

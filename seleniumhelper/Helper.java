@@ -96,6 +96,7 @@ public class Helper {
 		return driver;
 	}
 	
+	@SuppressWarnings("unchecked")
 	public <T> T javascript(String script, Object...args) {
 		return (T)((JavascriptExecutor)driver).executeScript(script, args);
 	}

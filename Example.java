@@ -4,21 +4,16 @@ import java.io.PrintWriter;
 import java.util.List;
 import java.util.Random;
 import java.util.Scanner;
-import java.util.concurrent.TimeUnit;
-
-
-import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.firefox.FirefoxDriver;
 
 import seleniumhelper.ShowdownHelper;
 import seleniumhelper.ShowdownHelper.TurnEndStatus;
-import seleniumhelper.loginterpret.BattleLog;
+import seleniumhelper.loginterpret.*;
 
 public class Example  {
     public static void main(String[] args) throws Exception {
-    	//testBattleLogFile();
-    	testBattle();
+    	testBattleLogFile();
+    	//testBattle();
     }
     
     public static void testBattle() throws Exception {
@@ -155,5 +150,14 @@ public class Example  {
 		System.out.println(bl.getCurrentPokemonAtTurn("Cloak", 6, true));
 		System.out.println(bl.getCurrentPokemonAtTurn("Cloak", 6, false));
 		System.out.println(bl.getCurrentTurn());
+		System.out.println("-------------------");
+		TIContext tic = new TIContext();
+		tic.foeCurrentPokemon = bl.getCurrentPokemonAtTurn("Cloak", 5, true);
+		tic.myCurrentPokemon = bl.getCurrentPokemonAtTurn("RODAN", 5, true);
+		TurnInfo ti = new TurnInfo(bl.getTurnHTML(5), tic);
+		for (TIEvent event : ti.getEvents()) {
+			System.err.println(event);
+			System.err.println("-------");
+		}
     }
 }
