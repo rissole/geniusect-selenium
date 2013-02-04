@@ -1,6 +1,9 @@
 package seleniumhelper.loginterpret;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 
 public class TurnInfo {
 	
@@ -28,41 +31,14 @@ public class TurnInfo {
 	}
 	
 	private void interpret() {
-		String strEvents[] = turnHTML.replaceAll("(</h2>|</div>)", "$1\n").split("\n");
-		for (int i = 0; i < strEvents.length;) {
-			String strEvent = strEvents[i];
-			TIEvent event = new TIEvent(strEvent);
-			if (event.requires() == TIEvent.REQUIRES_SKIPPING) {
-				++i;
-				continue;
-			}
-			else if (event.requires() == TIEvent.REQUIRES_UNTIL_SPACER) {
-				i += append_until_spacer(event, strEvents, i);
-			}
-			else {
-				int j = 1; 
-				for (; j < strEvents.length-i && j < event.requires(); ++j) {
-					event.appendToEvent(strEvents[i+j]);
-				}
-				i += j;
-			}
-			events.add(event);
-		}
-	}
-	
-	private int append_until_spacer(TIEvent event, String[] strEvents, int currentLine) {
-		int j = 1;
-		for (; j < strEvents.length-currentLine; ++j) {
-			if (!strEvents[currentLine+j].matches("^<div class=\"spacer\">.*?</div>$") &&
-				!strEvents[currentLine+j].matches("^<h2>.*?</h2>$")) {
-				event.appendToEvent(strEvents[currentLine+j]);
-			}
-			else {
-				++j; //ignore the actual "spacer"/h2 line
-				break;
+		List<String> strEvents = Arrays.asList(turnHTML.replaceAll("(</h2>|</div>)", "$1\n").split("\n"));
+		Iterator<String> itr = strEvents.iterator();
+		while (itr.hasNext()) {
+			TIEvent event = TIEvent.create(itr);
+			if (event != null) {
+				events.add(event);
 			}
 		}
-		return j;
 	}
 	
 	public ArrayList<TIEvent> getEvents() {
