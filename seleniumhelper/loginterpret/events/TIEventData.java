@@ -1,4 +1,4 @@
-package seleniumhelper.loginterpret;
+package seleniumhelper.loginterpret.events;
 
 import java.util.regex.Pattern;
 

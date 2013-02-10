@@ -9,11 +9,13 @@ import org.openqa.selenium.firefox.FirefoxDriver;
 import seleniumhelper.ShowdownHelper;
 import seleniumhelper.ShowdownHelper.TurnEndStatus;
 import seleniumhelper.loginterpret.*;
+import seleniumhelper.loginterpret.events.TIEvent;
 
 public class Example  {
     public static void main(String[] args) throws Exception {
-    	testBattleLogFile();
-    	//testBattle();
+    	//testBattleLogFile();
+    	testBattle();
+    	//benchmark();
     }
     
     public static void testBattle() throws Exception {
@@ -59,7 +61,7 @@ public class Example  {
 	             
 	        System.out.println("Moves:");
 	        String poke = showdown.getCurrentPokemon(true);
-	        printlist(showdown.getMoves(poke));
+	        printlist(showdown.getMoves());
 	        for (String move : showdown.getMoves()) {
 	        	System.out.println(move + ": " + showdown.getMoveRemainingPP(move) + " PP");
 	        }
@@ -159,5 +161,37 @@ public class Example  {
 			System.err.println(event);
 			System.err.println("-------");
 		}
+    }
+    
+    public static void benchmark() throws Exception {
+    	FirefoxDriver driver = new FirefoxDriver();
+		ShowdownHelper showdown = new ShowdownHelper(driver, "http://play.pokemonshowdown.com/~~rissole-showdown.herokuapp.com:80");
+		showdown.open();
+		String userName = "geniusecttest"+(new Random()).nextInt(100000);
+		showdown.login(userName, "");
+        showdown.createTeam("Hard To Please (Ninetales) (F) @ Leftovers\nTrait: Drought\nEVs: 252 HP / 252 SAtk / 4 SDef\nModest Nature\nIVs: 30 SAtk / 30 SDef\n- Sunny Day\n- SolarBeam\n- Overheat\n- Power Swap\n\nThe Jungle (Tangrowth) (M) @ Leftovers\nTrait: Chlorophyll\nEVs: 252 HP / 252 Spd / 4 Atk\nNaive Nature\n- Growth\n- Power Whip\n- Hidden Power [Ice]\n- Earthquake\n\nDisease (Dugtrio) (M) @ Focus Sash\nTrait: Arena Trap\nShiny: Yes\nEVs: 252 Spd / 4 Def / 252 Atk\nJolly Nature\n- Earthquake\n- Sucker Punch\n- Stone Edge\n- Reversal\n\nSerpentine (Heatran) (M) @ Choice Scarf\nTrait: Flash Fire\nShiny: Yes\nEVs: 252 Spd / 252 SAtk / 4 HP\nModest Nature\n- Overheat\n- SolarBeam\n- Earth Power\n- Hidden Power [Ice]\n\nWorse Everyday (Dragonite) (M) @ Lum Berry\nTrait: Multiscale\nEVs: 252 Spd / 4 HP / 252 Atk\nAdamant Nature\n- Dragon Dance\n- Fire Punch\n- ExtremeSpeed\n- Outrage\n\nAnimal (Donphan) (M) @ Leftovers\nTrait: Sturdy\nEVs: 252 SDef / 28 HP / 228 Def\nCareful Nature\n- Rapid Spin\n- Toxic\n- Stealth Rock\n- Earthquake", "t");
+        showdown.findBattle("Ubers", "t");
+        
+        TurnEndStatus startStatus = showdown.waitForBattleStart();
+        if (startStatus == TurnEndStatus.SWITCH) {
+        	showdown.switchTo(0);
+        	showdown.waitForNextTurn(0);
+        }
+        long startTime;
+        long endTime;
+        startTime = System.nanoTime();
+    	List<String> ourPokes= showdown.getTeam(userName);
+    	endTime = System.nanoTime();
+		System.out.println("Loaded Pokemon LIST in "+((endTime-startTime)/1000000)+"ms");
+    	for(int n = 0; n < ourPokes.size(); n++) {
+    		startTime = System.nanoTime();
+    		
+    		showdown.getMoves(n, true);
+    		
+    		showdown.getPokemonAttributes(n, userName);
+    		
+    		endTime = System.nanoTime();
+    		System.out.println("Loaded Pokemon "+n+" in "+((endTime-startTime)/1000000)+"ms");
+    	}
     }
 }

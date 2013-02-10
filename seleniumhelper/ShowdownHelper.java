@@ -322,7 +322,12 @@ public class ShowdownHelper extends Helper {
 	 * @return String List - names of the moves we have
 	 */
 	public List<String> getMoves() {
-		return getMoves(getCurrentPokemon(true));
+		ArrayList<String> moves = new ArrayList<String>(4);
+		WebElement moveMenu = driver.findElement(By.cssSelector("div.movemenu"));
+		for (WebElement e : moveMenu.findElements(By.tagName("button"))) {
+			moves.add(substringToFirst(e.getText(), 0, "\n"));
+		}
+		return moves;
 	}
 	
 	/**
@@ -358,40 +363,42 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	/**
-	 * Gets the moves the specified Pokemon [species], on our team, currently has.
+	 * Gets the moves the specified Pokemon, on our team, currently has.<br>
+	 * <b>NOTE</b> It is much more efficient to use the <code>slot</code> parameterised version of this
+	 * function if you can.
 	 * @param pokemon The Pokemon whose moves we want to retrieve
 	 * @param getShortNames If true, shortnames will be returned. (ie "leechseed" not "Leech Seed")
 	 * @return String List - names of the moves it has
 	 */
 	public List<String> getMoves(String pokemon, boolean getShortNames) {
-		ArrayList<String> moves = new ArrayList<String>(6);
-		int slot = getSlotForSpecies(pokemon);
-		if (slot == -1)
-			return moves;
-		String pokeObj = "curRoom.battle.mySide.pokemon["+slot+"]";
-		long numberMoves = javascript("return "+pokeObj+".moves.length");
-		for (int i = 0; i < numberMoves; ++i) {
-			if (getShortNames == false) {
-				String moveName = (String)javascript("return Tools.getMove("+pokeObj+".moves[arguments[0]]).name",i);
-				if (moveName.contains("Hidden Power")) {
-					moveName = "Hidden Power";
-				}
-				moves.add(moveName);
-			}
-			else {
-				moves.add((String)javascript("return "+pokeObj+".moves[arguments[0]]",i));
-			}
-		}
-		return moves;		
+		return getMoves(getSlotForSpecies(pokemon), getShortNames);
 	}
 	
 	/**
-	 * Gets the moves the specified Pokemon [species], on our team, currently has.
-	 * @param pokemon The Pokemon whose moves we want to retrieve
+	 * Gets the moves the specified Pokemon, on our team, currently has.
+	 * @param slot The slot that the Pokemon is in. [0-5]
+	 * @param getShortNames If true, shortnames will be returned. (ie "leechseed" not "Leech Seed")
 	 * @return String List - names of the moves it has
 	 */
-	public List<String> getMoves(String pokemon) {
-		return getMoves(pokemon, false);
+	public List<String> getMoves(int slot, boolean getShortNames) {
+		if (slot < 0 ||  slot > 5)
+			return new ArrayList<String>(0);
+		@SuppressWarnings("unchecked")
+		List<String> moves = (List<String>)javascript(
+			"var pokeObj = curRoom.battle.mySide.pokemon[arguments[0]]; var moves = [];" + 
+			"for (var i = 0; i < pokeObj.moves.length; ++i) {" + 
+			"	var moveName = pokeObj.moves[i];" + 
+			"	if (arguments[1] == false) {" + 
+			"		moveName = Tools.getMove(moveName).name;" + 
+			"		if (moveName.contains(\"Hidden Power\")) {" + 
+			"			moveName = \"Hidden Power\";" + 
+			"		}" + 
+			"	}" + 
+			"	moves.push(moveName);" + 
+			"}" + 
+			"return moves;"
+		, slot, getShortNames);
+		return moves;
 	}
 	
 	/**
@@ -445,7 +452,7 @@ public class ShowdownHelper extends Helper {
 	
 	/**
 	 * Switches to the Pokemon in slot specified
-	 * @param slot It's the slot (0-5)
+	 * @param slot It's the slot [0-5]
 	 * @throws NoSuchChoiceException if the specified slot is invalid
 	 * @throws IsTrappedException if we are trapped
 	 * @throws UnusableException if we can't switch to the specified Pokemon (it is fainted, for example)
@@ -506,15 +513,14 @@ public class ShowdownHelper extends Helper {
 	
 	/**
 	 * Gets a Pokemon's attribute via javascript.
-	 * @param pokemon The species name of the Pokemon
+	 * @param slot The slot of the Pokemon to check. [0-5]
 	 * @param owner Which team the Pokemon is on
 	 * @param attribute Which javascript attribute we are trying to get
 	 * @param json True if you want to return a JSON stringified object.
 	 * @return Object - returned Javascript object (may be null)
 	 */
-	private Object getPokemonAttribute(String pokemon, String owner, String attribute, boolean json) {
-		int slot = getSlotForSpecies(pokemon, owner);
-		if (slot == -1) {
+	private Object getPokemonAttribute(int slot, String owner, String attribute, boolean json) {
+		if (slot < 0 || slot > 5) {
 			return null;
 		}
 		String side = "mySide";
@@ -530,25 +536,85 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	/**
-	 * Returns the current status of the Pokemon.
+	 * Returns the attributes of the specified Pokemon. Note that it is generally faster to gather all the
+	 * information of a Pokemon in one call like this if you wish to retrieve more than one field.
+	 * @param slot The slot that the Pokemon is in. [0-5]
+	 * @param owner Which team the Pokemon is on
+	 * @return A Map containing all the attributes:<br>
+	 * <b>'status'</b>: see getStatus<br>
+	 * <b>'hp'</b>: see getHP<br>
+	 * <b>'maxhp'</b>: see getMaxHP<br>
+	 * <b>'gender'</b>: see getGender<br>
+	 * <b>'level'</b>: see getLevel<br>
+	 * <b>'ability'</b>: see getAbility<br>
+	 * <b>'item'</b>: see getItem<br>
+	 */
+	public Map<String, Object> getPokemonAttributes(int slot, String owner) {
+		String side = "mySide";
+		if (owner.equals(getOpponentName())) {
+			side = "yourSide";
+		}
+		String info = (String)javascript(
+				"var p=curRoom.battle[arguments[0]].pokemon[arguments[1]];" +
+				"if (p == null) return '';" +
+				"return JSON.stringify({" +
+				"'status':p.status, 'hp':p.hp, 'maxhp':p.maxhp, 'gender':p.gender, 'level':p.level," +
+				"});", side, slot
+		);
+		
+		Map<String, Object> mapInfo = new HashMap<String, Object>();
+		try {
+			JSONObject jo = new JSONObject(info);
+			@SuppressWarnings("unchecked")
+			Iterator<String> itr = jo.keys();
+			while (itr.hasNext()) {
+				String k = itr.next();
+				mapInfo.put(k, jo.getInt(k));
+			}
+		}
+		catch (JSONException e) {
+			return mapInfo;
+		}
+		mapInfo.put("ability", getAbility(slot,owner));
+		mapInfo.put("item", getItem(slot,owner));
+		return mapInfo;
+	}
+	
+	/**
+	 * Returns the current status of the Pokemon.<br>
+	 * <b>NOTE</b> It is much more efficient to use the <code>slot</code> parameterised version of this
+	 * function if you can.
 	 * @param pokemon The species name of the Pokemon
 	 * @param owner Which team the Pokemon is on
 	 * @return String - Pokemon status. 3 character abbreviation, lower case.
 	 * Can return: <b>'tox', 'psn', 'frz', 'par', 'brn', or null if no status.</b>
 	 */
 	public String getStatus(String pokemon, String owner) {
-		return (String)getPokemonAttribute(pokemon, owner, "status", false);
+		return getStatus(getSlotForSpecies(pokemon), owner);
+	}
+	
+	/**
+	 * Returns the current status of the Pokemon.
+	 * @param slot The slot that the Pokemon is in. [0-5]
+	 * @param owner Which team the Pokemon is on
+	 * @return String - Pokemon status. 3 character abbreviation, lower case.
+	 * Can return: <b>'tox', 'psn', 'frz', 'par', 'brn', or null if no status.</b>
+	 */
+	public String getStatus(int slot, String owner) {
+		return (String)getPokemonAttribute(slot, owner, "status", false);
 	}
 	
 	/**
 	 * Returns whether the Pokemon specified has the given volatile. A volatile is an effect which
-	 * is usually removed on switch.
+	 * is usually removed on switch.<br>
+	 * <b>NOTE</b> It is much more efficient to use the <code>slot</code> parameterised version of this
+	 * function if you can.
 	 * @param pokemon The species name of the Pokemon
 	 * @param owner  Which team the Pokemon is on
 	 * @param _volatile String - volatile name.<br/>
 	 * Known values: <b>formechange, leechseed, protect, magiccoat, yawn, confusion,
 	 * airballoon, transform, substitute, taunt, encore, torment, stockpile{1,2,3}, perish{1,2,3}</b>
-	 * @return
+	 * @return true if and only if the specified volatile is present.
 	 */
 	public boolean hasVolatile(String pokemon, String owner, String _volatile) {
 		int slot = getSlotForSpecies(pokemon, owner);
@@ -560,39 +626,99 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	/**
-	 * Returns whether the specified Pokemon has fainted or not.
+	 * Returns whether the Pokemon specified has the given volatile. A volatile is an effect which
+	 * is usually removed on switch.
+	 * @param slot The slot the Pokemon is in.
+	 * @param owner  Which team the Pokemon is on
+	 * @param _volatile String - volatile name.<br/>
+	 * Known values: <b>formechange, leechseed, protect, magiccoat, yawn, confusion,
+	 * airballoon, transform, substitute, taunt, encore, torment, stockpile{1,2,3}, perish{1,2,3}</b>
+	 * @return true if and only if the specified volatile is present.
+	 */
+	public boolean hasVolatile(int slot, String owner, String _volatile) {
+		String side = "mySide";
+		if (owner.equals(getOpponentName())) {
+			side = "yourSide";
+		}
+		return (Boolean)javascript("var p=curRoom.battle[arguments[0]].pokemon[arguments[1]]; if (p!=null) return p.hasVolatile(arguments[2]);", side, slot, _volatile);
+	}
+	
+	/**
+	 * Returns whether the specified Pokemon has fainted or not.<br>
+	 * <b>NOTE</b> It is much more efficient to use the <code>slot</code> parameterised version of this
+	 * function if you can.
 	 * @param pokemon The species name of the Pokemon
 	 * @param owner Which team the Pokemon is on
 	 * @return True if fainted, false otherwise.
 	 */
 	public boolean isFainted(String pokemon, String owner) {
-		return (Boolean)getPokemonAttribute(pokemon,owner,"fainted",false);
+		return (Boolean)getPokemonAttribute(getSlotForSpecies(pokemon, owner),owner,"fainted",false);
+	}
+	
+	/**
+	 * Returns whether the specified Pokemon has fainted or not.
+	 * @param slot The slot the Pokemon is in.
+	 * @param owner Which team the Pokemon is on
+	 * @return True if fainted, false otherwise.
+	 */
+	public boolean isFainted(int slot, String owner) {
+		return (Boolean)getPokemonAttribute(slot,owner,"fainted",false);
 	}
 	
 	/**
 	 * Returns the specified Pokemon's HP.
 	 * <b>NOTE: This returns a percentage (0-100) if the <code>owner</code> is the opponent; otherwise
-	 * the exact HP value.</b>
+	 * the exact HP value.</b><br>
+	 * <b>NOTE</b> It is much more efficient to use the <code>slot</code> parameterised version of this
+	 * function if you can.
 	 * @param pokemon The species name of the Pokemon
 	 * @param owner Which team the Pokemon is on
 	 * @return Integer - returns a percentage (0-100) if the <code>owner</code> is the opponent; otherwise
 	 * the exact HP value.
 	 */
 	public int getHP(String pokemon, String owner) {
-		return ((Long)getPokemonAttribute(pokemon,owner,"hp",false)).intValue();
+		return ((Long)getPokemonAttribute(getSlotForSpecies(pokemon,owner),owner,"hp",false)).intValue();
+	}
+	
+	/**
+	 * Returns the specified Pokemon's HP.
+	 * <b>NOTE: This returns a percentage (0-100) if the <code>owner</code> is the opponent; otherwise
+	 * the exact HP value.</b>
+	 * @param slot The slot the Pokemon is in.
+	 * @param owner Which team the Pokemon is on
+	 * @return Integer - returns a percentage (0-100) if the <code>owner</code> is the opponent; otherwise
+	 * the exact HP value.
+	 */
+	public int getHP(int slot, String owner) {
+		return ((Long)getPokemonAttribute(slot,owner,"hp",false)).intValue();
 	}
 	
 	/**
 	 * Returns the specified Pokemon's Max HP.
 	 * <b>NOTE: This returns 100 if the <code>owner</code> is the opponent; otherwise
-	 * the exact max HP value.</b>
+	 * the exact max HP value.</b><br>
+	 * <b>NOTE</b> It is much more efficient to use the <code>slot</code> parameterised version of this
+	 * function if you can.
 	 * @param pokemon The species name of the Pokemon
 	 * @param owner Which team the Pokemon is on
 	 * @return Integer - returns 100 if the <code>owner</code> is the opponent; otherwise
 	 * the exact HP value.
 	 */
 	public int getMaxHP(String pokemon, String owner) {
-		return ((Long)getPokemonAttribute(pokemon,owner,"maxhp",false)).intValue();
+		return ((Long)getPokemonAttribute(getSlotForSpecies(pokemon,owner),owner,"maxhp",false)).intValue();
+	}
+	
+	/**
+	 * Returns the specified Pokemon's Max HP.
+	 * <b>NOTE: This returns 100 if the <code>owner</code> is the opponent; otherwise
+	 * the exact max HP value.</b>
+	 * @param slot The slot the Pokemon is in.
+	 * @param owner Which team the Pokemon is on
+	 * @return Integer - returns 100 if the <code>owner</code> is the opponent; otherwise
+	 * the exact HP value.
+	 */
+	public int getMaxHP(int slot, String owner) {
+		return ((Long)getPokemonAttribute(slot,owner,"maxhp",false)).intValue();
 	}
 	
 	/**
@@ -624,7 +750,9 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	/**
-	 * Returns the full name of the ability of the specified Pokemon.
+	 * Returns the full name of the ability of the specified Pokemon.<br>
+	 * <b>NOTE</b> It is much more efficient to use the <code>slot</code> parameterised version of this
+	 * function if you can.
 	 * @param pokemon The species name of the Pokemon
 	 * @param owner Which team the Pokemon is on
 	 * @return Ability name, or null if no ability found.<br/>
@@ -636,7 +764,21 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	/**
-	 * Returns the name of the ability of the specified Pokemon.
+	 * Returns the full name of the ability of the specified Pokemon.
+	 * @param slot The slot of the Pokemon [0-5]
+	 * @param owner Which team the Pokemon is on
+	 * @return Ability name, or null if no ability found.<br/>
+	 * Note that in most circumstances, this will be null when <code>owner</code> is the opponent.
+	 * It only returns correctly if the target Pokemon has <b>only one possible ability.</b>
+	 */
+	public String getAbility(int slot, String owner) {
+		return getAbility(slot, owner, false);
+	}
+	
+	/**
+	 * Returns the name of the ability of the specified Pokemon.<br>
+	 * <b>NOTE</b> It is much more efficient to use the <code>slot</code> parameterised version of this
+	 * function if you can.
 	 * @param pokemon The species name of the Pokemon
 	 * @param owner Which team the Pokemon is on
 	 * @param getShortName If true, shortnames will be returned. (ie "shedskin" not "Shed Skin")
@@ -645,10 +787,23 @@ public class ShowdownHelper extends Helper {
 	 * It only returns correctly if the target Pokemon has <b>only one possible ability.</b>
 	 */
 	public String getAbility(String pokemon, String owner, boolean getShortName) {
-		String ability = (String)getPokemonAttribute(pokemon, owner, "ability", false);
+		return getAbility(getSlotForSpecies(pokemon), owner, getShortName);
+	}
+	
+	/**
+	 * Returns the name of the ability of the specified Pokemon.
+	 * @param pokemon The species name of the Pokemon
+	 * @param owner Which team the Pokemon is on
+	 * @param getShortName If true, shortnames will be returned. (ie "shedskin" not "Shed Skin")
+	 * @return Ability name, or null if no ability found.<br/>
+	 * Note that in most circumstances, this will be null when <code>owner</code> is the opponent.
+	 * It only returns correctly if the target Pokemon has <b>only one possible ability.</b>
+	 */
+	public String getAbility(int slot, String owner, boolean getShortName) {
+		String ability = (String)getPokemonAttribute(slot, owner, "ability", false);
 		if (ability != null && ability.equals("")) {
 			try {
-				JSONObject jo = new JSONObject((String)getPokemonAttribute(pokemon, owner, "abilities",true));
+				JSONObject jo = new JSONObject((String)getPokemonAttribute(slot, owner, "abilities",true));
 				ability = jo.getString("0");
 				if (jo.length() != 1) {
 					return null;
@@ -666,7 +821,9 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	/**
-	 * Returns the full name of the item held by the specified Pokemon on our team.
+	 * Returns the full name of the item held by the specified Pokemon on our team.<br>
+	 * <b>NOTE</b> It is much more efficient to use the <code>slot</code> parameterised version of this
+	 * function if you can.
 	 * @param pokemon The species name of the Pokemon
 	 * @param owner Which team the Pokemon is on
 	 * @return Item name, or empty string if no item.
@@ -676,14 +833,37 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	/**
-	 * Returns the name of the item held by the specified Pokemon on our team.
+	 * Returns the full name of the item held by the specified Pokemon on our team.
+	 * @param slot The slot that the Pokemon is in. [0-5]
+	 * @param owner Which team the Pokemon is on
+	 * @return Item name, or empty string if no item.
+	 */
+	public String getItem(int slot, String owner) {
+		return getItem(slot, owner, false);
+	}
+	
+	/**
+	 * Returns the name of the item held by the specified Pokemon on our team.<br>
+	 * <b>NOTE</b> It is much more efficient to use the <code>slot</code> parameterised version of this
+	 * function if you can.
 	 * @param pokemon The species name of the Pokemon
 	 * @param owner Which team the Pokemon is on
 	 * @param getShortName If true, shortnames will be returned. (ie "griseousorb" not "Griseous Orb")
 	 * @return Item name, or null if no item.
 	 */
 	public String getItem(String pokemon, String owner, boolean getShortName) {
-		String item = (String)getPokemonAttribute(pokemon, owner, "item", false);
+		return getItem(getSlotForSpecies(pokemon), owner, getShortName);
+	}
+	
+	/**
+	 * Returns the name of the item held by the specified Pokemon on our team.
+	 * @param slot The slot that the Pokemon is in. [0-5]
+	 * @param owner Which team the Pokemon is on
+	 * @param getShortName If true, shortnames will be returned. (ie "griseousorb" not "Griseous Orb")
+	 * @return Item name, or null if no item.
+	 */
+	public String getItem(int slot, String owner, boolean getShortName) {
+		String item = (String)getPokemonAttribute(slot, owner, "item", false);
 		if (item == null || item.equals("")) {
 			return null;
 		}
@@ -694,23 +874,47 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	/**
-	 * Gets the specified Pokemon's gender.
+	 * Gets the specified Pokemon's gender.<br>
+	 * <b>NOTE</b> It is much more efficient to use the <code>slot</code> parameterised version of this
+	 * function if you can.
 	 * @param pokemon The species name of the Pokemon
 	 * @param owner Which team the Pokemon is on
 	 * @return "M" for male, "F" for female, or empty string if genderless.
 	 */
 	public String getGender(String pokemon, String owner) {
-		return (String)getPokemonAttribute(pokemon, owner, "gender", false);
+		return (String)getPokemonAttribute(getSlotForSpecies(pokemon,owner), owner, "gender", false);
 	}
 	
 	/**
-	 * Gets the specified Pokemon's level.
+	 * Gets the specified Pokemon's gender.
+	 * @param slot The slot the Pokemon is in.
+	 * @param owner Which team the Pokemon is on
+	 * @return "M" for male, "F" for female, or empty string if genderless.
+	 */
+	public String getGender(int slot, String owner) {
+		return (String)getPokemonAttribute(slot, owner, "gender", false);
+	}
+	
+	/**
+	 * Gets the specified Pokemon's level.<br>
+	 * <b>NOTE</b> It is much more efficient to use the <code>slot</code> parameterised version of this
+	 * function if you can.
 	 * @param pokemon The species name of the Pokemon
 	 * @param owner Which team the Pokemon is on
 	 * @return int - Pokemon's level.
 	 */
 	public int getLevel(String pokemon, String owner) {
-		return ((Long)getPokemonAttribute(pokemon, owner, "level", false)).intValue();
+		return ((Long)getPokemonAttribute(getSlotForSpecies(pokemon,owner), owner, "level", false)).intValue();
+	}
+	
+	/**
+	 * Gets the specified Pokemon's level.
+	 * @param slot The slot the Pokemon is in.
+	 * @param owner Which team the Pokemon is on
+	 * @return int - Pokemon's level.
+	 */
+	public int getLevel(int slot, String owner) {
+		return ((Long)getPokemonAttribute(slot, owner, "level", false)).intValue();
 	}
 	
 	/**
@@ -789,13 +993,14 @@ public class ShowdownHelper extends Helper {
 		if (owner.equals(getOpponentName())) {
 			side = "yourSide";
 		}
-		List<String> team = new ArrayList<String>(6);
-		for (int i = 0; i < 6; ++i) {
-			String poke = javascript("var p = curRoom.battle[arguments[0]].pokemon[arguments[1]]; if (p!=null) return p.species;", side, i);
-			if (poke != null) {
-				team.add(poke);
-			}
-		}
+		@SuppressWarnings("unchecked")
+		List<String> team = (List<String>)javascript(
+			"var pokes = []; var pokeObjs = curRoom.battle[arguments[0]].pokemon; " +
+			"for (var i = 0; i < pokeObjs.length; ++i) {" +
+			"	pokes.push(pokeObjs[i].species);" +
+			"}" +
+			"return pokes;"
+		, side);
 		return team;
 	}
 	
@@ -809,13 +1014,15 @@ public class ShowdownHelper extends Helper {
 		if (owner.equals(getOpponentName())) {
 			side = "yourSide";
 		}
-		List<String> team = new ArrayList<String>(6);
-		for (int i = 0; i < 6; ++i) {
-			String poke = javascript("var p = curRoom.battle[arguments[0]].pokemon[arguments[1]]; if (p!=null && !p.fainted) return p.species;", side, i);
-			if (poke != null) {
-				team.add(poke);
-			}
-		}
+		@SuppressWarnings("unchecked")
+		List<String> team = (List<String>)javascript(
+			"var pokes = []; var pokeObjs = curRoom.battle[arguments[0]].pokemon; " +
+			"for (var i = 0; i < pokeObjs.length; ++i) {" +
+			"	if (!pokeObjs[i].fainted)" +
+			"		pokes.push(pokeObjs[i].species);" +
+			"}" +
+			"return pokes;"
+		, side);
 		return team;
 	}
 	

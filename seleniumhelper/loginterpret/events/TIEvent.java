@@ -1,7 +1,15 @@
-package seleniumhelper.loginterpret;
+package seleniumhelper.loginterpret.events;
 
 import java.util.Iterator;
 
+/**
+ * Superclass that represents one "event" from Showdown.<br>
+ * Subclasses contain interpreted event data in easy to use format.<br>
+ * What constitutes an 'event' is a good question. It varies per-event, but generally,
+ * each move is its own event, each switch is its own event.
+ * @author Rissole
+ *
+ */
 public class TIEvent {
 	
 	/**

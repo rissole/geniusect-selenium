@@ -1,4 +1,5 @@
-package seleniumhelper.loginterpret;
+package seleniumhelper.loginterpret.events;
+
 
 public class TIChangeEvent extends TIEvent {
 	
