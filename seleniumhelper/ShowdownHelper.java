@@ -556,27 +556,39 @@ public class ShowdownHelper extends Helper {
 		}
 		String info = (String)javascript(
 				"var p=curRoom.battle[arguments[0]].pokemon[arguments[1]];" +
+				"var ability = p.ability;" +
+				"if (ability == \"\")" +
+				"	ability = (p.abilities.length == 1) ? p.abilities[0] : null;" +
+				"if (ability != null)" +
+				"	ability = Tools.getAbility(ability).name;" +
+				
+				"var item = p.item;" +
+				"if (item == null || item == \"\")" +
+				"	item = null;" +
+				"if (item != null)" +
+				"	item = Tools.getItem(item).name;" +
+				
 				"if (p == null) return '';" +
 				"return JSON.stringify({" +
 				"'status':p.status, 'hp':p.hp, 'maxhp':p.maxhp, 'gender':p.gender, 'level':p.level," +
+				"'ability':ability, 'item':item" +
 				"});", side, slot
 		);
 		
 		Map<String, Object> mapInfo = new HashMap<String, Object>();
 		try {
 			JSONObject jo = new JSONObject(info);
-			@SuppressWarnings("unchecked")
-			Iterator<String> itr = jo.keys();
-			while (itr.hasNext()) {
-				String k = itr.next();
-				mapInfo.put(k, jo.getInt(k));
-			}
+			mapInfo.put("status", jo.getString("status"));
+			mapInfo.put("hp", jo.getInt("hp"));
+			mapInfo.put("maxhp", jo.getInt("maxhp"));
+			mapInfo.put("gender", jo.getString("gender"));
+			mapInfo.put("level", jo.getInt("level"));
+			mapInfo.put("ability", jo.getString("ability"));
+			mapInfo.put("item", jo.getString("item"));
 		}
 		catch (JSONException e) {
 			return mapInfo;
 		}
-		mapInfo.put("ability", getAbility(slot,owner));
-		mapInfo.put("item", getItem(slot,owner));
 		return mapInfo;
 	}
 	
@@ -800,24 +812,20 @@ public class ShowdownHelper extends Helper {
 	 * It only returns correctly if the target Pokemon has <b>only one possible ability.</b>
 	 */
 	public String getAbility(int slot, String owner, boolean getShortName) {
-		String ability = (String)getPokemonAttribute(slot, owner, "ability", false);
-		if (ability != null && ability.equals("")) {
-			try {
-				JSONObject jo = new JSONObject((String)getPokemonAttribute(slot, owner, "abilities",true));
-				ability = jo.getString("0");
-				if (jo.length() != 1) {
-					return null;
-				}
-			}
-			catch (JSONException e) {
-				return null;
-			}
+		String side = "mySide";
+		if (owner.equals(getOpponentName())) {
+			side = "yourSide";
 		}
-		
-		if (getShortName) {
-			return ability;
-		}
-		return (String)javascript("return Tools.getAbility(arguments[0]).name;", ability);
+		return (String)javascript(
+			"var pokeObj = curRoom.battle[arguments[0]].pokemon[arguments[1]];" +
+			"var ability = pokeObj.ability;" +
+			"if (ability == \"\")" +
+			"	ability = (pokeObj.abilities.length == 1) ? pokeObj.abilities[0] : null;" +
+			"if (arguments[2])" +
+			"	return ability;" +
+			"else" +
+			"	return Tools.getAbility(ability).name;"
+		, side, slot, getShortName);
 	}
 	
 	/**
@@ -863,14 +871,20 @@ public class ShowdownHelper extends Helper {
 	 * @return Item name, or null if no item.
 	 */
 	public String getItem(int slot, String owner, boolean getShortName) {
-		String item = (String)getPokemonAttribute(slot, owner, "item", false);
-		if (item == null || item.equals("")) {
-			return null;
+		String side = "mySide";
+		if (owner.equals(getOpponentName())) {
+			side = "yourSide";
 		}
-		else if (getShortName) {
-			return item;
-		}
-		return (String)javascript("return Tools.getItem(arguments[0]).name;", item);
+		return (String)javascript(
+			"var pokeObj = curRoom.battle[arguments[0]].pokemon[arguments[1]];" +
+			"var item = pokeObj.item;" +
+			"if (item == null || item == \"\")" +
+			"	return null;" +
+			"if (arguments[2])" +
+			"	return item;" +
+			"else" +
+			"	return Tools.getItem(item).name;"
+		, side, slot, getShortName);
 	}
 	
 	/**

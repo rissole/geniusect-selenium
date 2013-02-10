@@ -2,6 +2,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Scanner;
 import org.openqa.selenium.firefox.FirefoxDriver;
@@ -13,9 +14,9 @@ import seleniumhelper.loginterpret.events.TIEvent;
 
 public class Example  {
     public static void main(String[] args) throws Exception {
-    	testBattleLogFile();
+    	//testBattleLogFile();
     	//testBattle();
-    	//benchmark();
+    	benchmark();
     }
     
     public static void testBattle() throws Exception {
@@ -191,6 +192,7 @@ public class Example  {
     		showdown.getPokemonAttributes(n, userName);
     		
     		endTime = System.nanoTime();
+    		
     		System.out.println("Loaded Pokemon "+n+" in "+((endTime-startTime)/1000000)+"ms");
     	}
     }
