@@ -1,120 +1,125 @@
 package seleniumhelper.loginterpret.events;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Iterator;
 
 /**
- * Superclass that represents one "event" from Showdown.<br>
- * Subclasses contain interpreted event data in easy to use format.<br>
- * What constitutes an 'event' is a good question. It varies per-event, but generally,
- * each move is its own event, each switch is its own event.
- * @author Rissole
+ * Superclass that represents one "event" from Showdown.
+ * Subclasses contain interpreted event data in an easy to use format.
+ * Generally speaking, each move is its own event, and 
+ * each switch is its own event.
+ * @author burse
  *
  */
-public class TIEvent {
+public abstract class TIEvent {
 	
 	/**
 	 * Map of regexs to TIEvent subclass objects
+	 * Simply add a new entry in this map to create a new event.
+	 * First parameter is the regex applied to the line in the battle log- if this
+	 * matches, a new TIEvent instance is created, specifically an instance of
+	 * the class in the second parameter.<p>
+	 * 
+	 * The second entry must have regex=null and will be selected if no regex match is found.
+	 * class=null indicates to skip that line upon a match.<p>
+	 *
+	 * The number of additional lines required from the battle log
+	 * to create this TIEvent object. Special
+	 * <code>TIEventData.REQUIRES_UNTIL_SPACER</code> indicates lines required
+	 * are up to the next spacer div, h2 tag, or turn end (which is often the case
+	 * with Showdown).
+	 * Otherwise it is an integer specifying how many lines from the log should
+	 * be read for the event, <b>including initial line</b>.
 	 */
 	public static final TIEventData[] EVENTMAP = {
-		new TIEventData("^<h2>Turn|^<div class=\"spacer\">", null),
-		new TIEventData("^<div>.+? called .+? back!</div>$", TIChangeEvent.class),
-		new TIEventData(null, TIEvent.class)
+		new TIEventData("^<h2>Turn|^<div class=\"spacer\">", null, 0),
+		new TIEventData("^<div>.+? called .+? back!</div>$", TIChangeEvent.class, 3),
+		new TIEventData(null, TIUnknownEvent.class, TIEventData.REQUIRES_UNTIL_SPACER),
 	};
 	
-	protected int linesRequired;
 	protected String eventText;
 	
-	protected TIEvent() {
-		linesRequired = TIEventData.REQUIRES_UNTIL_SPACER;
-		this.eventText = "";
+	/**
+	 * DO NOT CALL
+	 * @see TIEvent#create(Iterator)
+	 */
+	public TIEvent(String eventText) {
+		this.eventText = eventText;
 	}
 	
 	/**
-	 * Creates a new Turn Info event.
+	 * Creates a new Turn Info event based on the current line of the battle
+	 * log HTML we are looking at.
 	 * @param itr String iterator of the battle log HTML.<br>
 	 * This is always incremented at least once.
-	 * @return TIEvent or subclass.
+	 * @return TIEvent subclass or null if this line should be skipped.
 	 */
 	public static TIEvent create(Iterator<String> itr) {
+		// Determine what kind of event this line is.
 		String strEvent = itr.next();
-		TIEvent event = TIEvent.findEventByMatch(strEvent);
+		TIEventData eventData = TIEvent.findEventByMatch(strEvent);
 		
-		// skip.
-		if (event == null) {
+		// eventData.tiEventClass being null means we skip this line
+		if (eventData.tiEventClass == null) {
 			return null;
 		}
 		
-		// initialise event text
-		event.eventText = strEvent;
+		// GET EVENT TEXT
+		// init with our first line
+		String eventText = strEvent;
 		
-		// until next spacer, h2, or end of stream.
-		if (event.requires() == TIEventData.REQUIRES_UNTIL_SPACER) {
+		// Get extra lines required: case 1: until next spacer, h2, or end of stream.
+		if (eventData.linesRequired == TIEventData.REQUIRES_UNTIL_SPACER) {
 			while (itr.hasNext()) {
 				String line = itr.next();
 				if (!line.matches("^<div class=\"spacer\">.*?</div>$") &&
 					!line.matches("^<h2>.*?</h2>$")) {
-					event.appendToEvent(line);
+					eventText += "\n" + line;
 				}
 				else {
 					break;
 				}
 			}
 		}
-		// int - just this number of lines.
+		// case 2: int - just number of lines required
 		else {
-			int j = 0; 
-			// -1 because we count the line we've already eaten
-			for (; itr.hasNext() && j < event.requires()-1; ++j) {
-				event.appendToEvent(itr.next());
+			// linesRequired-1 because we have already appended the first line
+			for (int j = 0; itr.hasNext() && j < eventData.linesRequired-1; ++j) {
+				eventText += itr.next();
 			}
+		}
+		
+		// INITIALISE EVENT OBJECT
+		TIEvent event = null;
+		try {
+			event = (TIEvent) eventData.tiEventClass.getConstructors()[0].newInstance(eventText);
+		} catch (InstantiationException e) {
+			return null;
+		} catch (IllegalAccessException e) {
+			return null;
+		} catch (IllegalArgumentException e) {
+			return null;
+		} catch (InvocationTargetException e) {
+			return null;
+		} catch (SecurityException e) {
+			return null;
 		}
 		return event;
 	}
  
 	/**
 	 * Find an event class for our text line
-	 * @param firstLine
-	 * @return
+	 * @param firstLine Line we've read from the log
+	 * @return Matching TIEventData from EVENT_MAP
 	 */
-	private static TIEvent findEventByMatch(String firstLine) {
+	private static TIEventData findEventByMatch(String firstLine) {
 		for (TIEventData ted : EVENTMAP) {
-			// if we have traversed the list entirely...
-			if (ted.regex == null) {
-				try {
-					return (TIEvent)ted.tiEventClass.newInstance();
-				} catch (InstantiationException e) {
-					return null;
-				} catch (IllegalAccessException e) {
-					return null;
-				}
-			}
-			// if it matches
-			else if (ted.regex.matcher(firstLine).find()) {
-				try {
-					return (ted.tiEventClass != null ?
-							(TIEvent)ted.tiEventClass.newInstance() : null);
-				} catch (InstantiationException e) {
-					return null;
-				} catch (IllegalAccessException e) {
-					return null;
-				}
+			// regex should be null if we've traverse the entire list
+			if (ted.regex == null || ted.regex.matcher(firstLine).find()) {
+				return ted;
 			}
 		}
 		return null;
-	}
-	
-	/**
-	 * Returns the number of extra lines required for the event.
-	 * @return int - number of lines required, or:<br>
-	 * <code>REQUIRES_UNTIL_SPACER<br>
-	 * REQUIRES_SKIPPING</code>
-	 */
-	public int requires() {
-		return linesRequired;
-	}
-	
-	public void appendToEvent(String text) {
-		eventText += "\n"+text;
 	}
 	
 	public String getEventText() {
@@ -122,6 +127,6 @@ public class TIEvent {
 	}
 	
 	public String toString() {
-		return getEventText();
+		return getClass().getSimpleName()+"|"+getEventText();
 	}
 }

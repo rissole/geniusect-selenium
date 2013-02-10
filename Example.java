@@ -13,8 +13,8 @@ import seleniumhelper.loginterpret.events.TIEvent;
 
 public class Example  {
     public static void main(String[] args) throws Exception {
-    	//testBattleLogFile();
-    	testBattle();
+    	testBattleLogFile();
+    	//testBattle();
     	//benchmark();
     }
     
@@ -147,19 +147,19 @@ public class Example  {
 			return;
 		}
 		BattleLog bl = new BattleLog(text);
-		System.out.println(bl.getCurrentPokemonAtTurn("RODAN", 5, false));
-		System.out.println(bl.getCurrentPokemonAtTurn("RODAN", 6, false));
-		System.out.println(bl.getCurrentPokemonAtTurn("Cloak", 6, true));
-		System.out.println(bl.getCurrentPokemonAtTurn("Cloak", 6, false));
-		System.out.println(bl.getCurrentTurn());
-		System.out.println("-------------------");
+//		System.out.println(bl.getCurrentPokemonAtTurn("RODAN", 5, false));
+//		System.out.println(bl.getCurrentPokemonAtTurn("RODAN", 6, false));
+//		System.out.println(bl.getCurrentPokemonAtTurn("Cloak", 6, true));
+//		System.out.println(bl.getCurrentPokemonAtTurn("Cloak", 6, false));
+//		System.out.println(bl.getCurrentTurn());
+//		System.out.println("-------------------");
 		TIContext tic = new TIContext();
 		tic.foeCurrentPokemon = bl.getCurrentPokemonAtTurn("Cloak", 5, true);
 		tic.myCurrentPokemon = bl.getCurrentPokemonAtTurn("RODAN", 5, true);
 		TurnInfo ti = new TurnInfo(bl.getTurnHTML(5), tic);
 		for (TIEvent event : ti.getEvents()) {
-			System.err.println(event);
-			System.err.println("-------");
+			System.out.println(event);
+			System.out.println("-------");
 		}
     }
     
