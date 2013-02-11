@@ -734,6 +734,36 @@ public class ShowdownHelper extends Helper {
 	}
 	
 	/**
+	 * Returns the specified Pokemon's HP as a percentage.
+	 * <b>NOTE</b> It is much more efficient to use the <code>slot</code> parameterised version of this
+	 * function if you can.
+	 * @param pokemon The species name of the Pokemon
+	 * @param owner Which team the Pokemon is on
+	 * @return Double - returns a percentage (0-100).
+	 */
+	public double getHPPercent(String pokemon, String owner) {
+		return getHPPercent(getSlotForSpecies(pokemon), owner);
+	}
+	
+	/**
+	 * Returns the specified Pokemon's HP as a percentage.
+	 * @param slot The slot the Pokemon is in.
+	 * @param owner Which team the Pokemon is on
+	 * @return Double - returns a percentage (0-100).
+	 */
+	public double getHPPercent(int slot, String owner) {
+		String side = "mySide";
+		if (owner.equals(getOpponentName())) {
+			side = "yourSide";
+		}
+		return (Double)javascript(
+				"var p=curRoom.battle[arguments[0]].pokemon[arguments[1]];" +
+				"if (!p || p.maxhp == 0) return 0;" +
+				"return (p.hp/p.maxhp);"
+			, side, slot);
+	}
+	
+	/**
 	 * Returns the boosts of the Pokemon currently on <code>owner</code>'s side of the field.
 	 * @param owner Which team the Pokemon is on
 	 * @return Map - <code>(stat,boost)</code> pairs, <code>stat</code> being one of <b>atk, def, spa, spd, spe</b> and
