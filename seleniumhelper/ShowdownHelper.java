@@ -75,19 +75,28 @@ public class ShowdownHelper extends Helper {
 	 * Make password empty string if you wish to use an unregistered account.
 	 */
 	public void login(String userName, String password) {
-		waitForElementPresent(By.xpath("//button[contains(text(),'Choose name')]"), 20);
+		// Wait for the websocket connection to open...
+		// This is technically waiting for the lobby window to initialise,
+		// but this coincides with the socket opening so all G.
+		waitForElementPresent(By.cssSelector("div.roomlist"));
 		
-	    driver.findElement(By.xpath("//button[contains(text(),'Choose name')]")).click();
-	    driver.findElement(By.id("overlay_name")).clear();
-	    driver.findElement(By.id("overlay_name")).sendKeys(userName);
-	    driver.findElement(By.cssSelector("button[type=\"submit\"]")).click();
+		// If we store the By we risk accessing a stale element...
+		String loginCssSelector = "button[name='login']";
+		waitForElementPresent(By.cssSelector(loginCssSelector), 20);
+
+		clickAt(By.cssSelector(loginCssSelector));
+	    WebElement usernameTextbox = driver.findElement(By.cssSelector("input[name='username']"));
+	    usernameTextbox.clear();
+	    usernameTextbox.sendKeys(userName);
+	    clickAt(By.cssSelector("button[type='submit']"));
 	    
 	    if (password.length() > 0) {
-		    waitForElementPresent(By.id("overlay_password"));
+		    waitForElementPresent(By.cssSelector("input[name='password']"));
 		    
-		    driver.findElement(By.id("overlay_password")).clear();
-		    driver.findElement(By.id("overlay_password")).sendKeys(password);
-		    driver.findElement(By.cssSelector("button[type=\"submit\"]")).click();
+		    WebElement passwordTextbox = driver.findElement(By.cssSelector("input[name='password']"));
+		    passwordTextbox.clear();
+		    passwordTextbox.sendKeys(password);
+		    clickAt(By.cssSelector("button[type='submit']"));
 	    }
 	    currentUser = userName;
 	}
@@ -95,16 +104,38 @@ public class ShowdownHelper extends Helper {
 	/**
 	 * Attempts to find a battle of the specified format using the specified team.
 	 * @param format The format you want to search for.
-	 * @param team The team you are using. Ignored for random battle.
+	 * @param team The team you are using. Ignored for any format that does not require a team selection.
+	 * @throws NoSuchChoiceException if the specified format or team does not exist.
 	 */
-	public void findBattle(String format, String team) {
-		dropdownSelect(By.id("lobby-format"), format);
+	public void findBattle(String format, String team) throws NoSuchChoiceException {
+		// Select the desired format
+		clickAt(By.cssSelector("button[name='format']"));
+		waitForElementPresent(By.cssSelector("div.ps-popup"));
 		sleep(500);
-		if (isElementPresent(By.id("lobby-team"))) {
-			dropdownSelect(By.id("lobby-team"), team);
-			sleep(500);
+		By wantedFormatBy = By.xpath(String.format("//button[@name='selectFormat'][text()='%s']", format));
+		if (!isElementPresent(wantedFormatBy)) {
+			throw new NoSuchChoiceException(String.format("Battle format '%s' does not exist", format));
 		}
-		clickAt(By.id("lobby-gobutton"));
+		clickAt(wantedFormatBy);
+		
+		// Select the desired team
+		By teamDropdownBy = By.cssSelector("button[name='team']:not([disabled])");
+		if (isElementPresent(teamDropdownBy)) {
+			if (team != null) {
+				clickAt(teamDropdownBy);
+				waitForElementPresent(By.cssSelector("div.ps-popup"));
+				By wantedTeamBy = By.xpath(String.format("//button[@name='selectTeam'][text()='%s']", team));
+				if (!isElementPresent(wantedTeamBy)) {
+					throw new NoSuchChoiceException(String.format("Team '%s' does not exist", team));
+				}
+				clickAt(wantedTeamBy);
+			}
+		} else {
+			if (team != null) {
+				throw new NoSuchChoiceException(String.format("Unable to select team '%s'.", team));
+			}
+		}
+		clickAt(By.cssSelector("button[name='search']"));
 	}
 	
 	/**
@@ -115,12 +146,12 @@ public class ShowdownHelper extends Helper {
 	public TurnEndStatus waitForBattleStart() throws InvalidTeamException {
 		(new WebDriverWait(driver, 120)).until(new ExpectedCondition<Boolean>() {
             public Boolean apply(WebDriver d) {
-                return isElementPresent(By.cssSelector("div.whatdo")) || isElementPresent(By.id("messagebox"));
+                return isElementPresent(By.cssSelector("div.whatdo")) ||
+                	   isElementPresent(By.cssSelector("div.ps-popup"));
             }
         });
-		sleep(500);
-		if (isElementPresent(By.id("messagebox"))) {
-			throw new InvalidTeamException(driver.findElement(By.cssSelector("#messagebox > div")).getText());
+		if (isElementPresent(By.cssSelector("div.ps-popup"))) {
+			throw new InvalidTeamException(driver.findElement(By.cssSelector("div.ps-popup>p:first")).getText());
 		}
 		
 		initBattleLog();
@@ -160,11 +191,10 @@ public class ShowdownHelper extends Helper {
 	 * Leaves the current battle (click the close room button)
 	 */
 	public void leaveBattle() {
-		WebElement currentTab = driver.findElement(By.xpath("//a[contains(@class, 'tab battletab cur')]"));
-		currentTab.findElement(By.xpath("//span[contains(@class, 'close')]")).click();
+		clickAt(By.cssSelector("a.button.cur.closable + a.closebutton"));
 		sleep(500);
-		if (isElementPresent(By.cssSelector("button[type=\"submit\"]"))) {
-			clickAt(By.cssSelector("button[type=\"submit\"]"));
+		if (isElementPresent(By.cssSelector("button[type='submit']"))) {
+			clickAt(By.cssSelector("button[type='submit']"));
 		}
 	}
 	
@@ -180,10 +210,8 @@ public class ShowdownHelper extends Helper {
 	 * Presses "Kick Inactive Player" button
 	 */
 	public void kickInactivePlayer() {
-		if (isElementPresent(By.cssSelector("div.replay-controls > button"))) {
-			clickAt(By.cssSelector("div.replay-controls > button"));
-			battleTimerOn = !battleTimerOn;
-		}
+		clickAt(By.cssSelector("button[name='setTimer']"));
+		battleTimerOn = !battleTimerOn;
 	}
 	
 	/**
@@ -200,7 +228,7 @@ public class ShowdownHelper extends Helper {
 	 * @param logToConsole If true, the message will also be written to the console.
 	 */
 	public void sendMessage(String message, boolean logToConsole) {
-		WebElement chatbox = driver.findElement(By.xpath("(//textarea[@type='text'])[2]"));
+		WebElement chatbox = driver.findElement(By.xpath("(//div[@class='battle-log-add']//textarea[2])"));
 		chatbox.clear();
 		chatbox.sendKeys(message);
 		chatbox.sendKeys(Keys.RETURN);
@@ -215,29 +243,36 @@ public class ShowdownHelper extends Helper {
 	 * @param teamName The name you want the team to have. Recommended to be unique.
 	 */
 	public void createTeam(String importable, String teamName) {
-		driver.findElement(By.id("tabtab-teambuilder")).click();
-		sleep(500);
+		// Open teambuilder
+		clickAt(By.cssSelector("i.icon-home"));
+		waitForElementPresent(By.cssSelector("button[value='teambuilder']"));
+		clickAt(By.cssSelector("button[value='teambuilder']"));
+		
+		// Back out until at teambuilder homepage
 		int attempts = 0;
-		while (!isElementVisible(By.xpath("//button[text()=' New team']"))) {
-			clickAt(By.xpath("//button[i[@class='icon-chevron-left']]"));
+		while (!isElementVisible(By.cssSelector("button[name='new']"))) {
+			clickAt(By.cssSelector("button[name='back']"));
 			sleep(500);
 			++attempts;
 			if (attempts > 20) {
 				throw new NoSuchElementException("Could not find 'New Team' button");
 			}
 		}
-	    driver.findElement(By.xpath("//button[text()=' New team']")).click();
+		
+		// Click New Team
+	    clickAt(By.cssSelector("button[name='new']"));
+	    waitForElementPresent(By.cssSelector("button[name='import']"));
+	    clickAt(By.cssSelector("button[name='import']"));
+	    waitForElementPresent(By.cssSelector("textarea.teamedit"));
+	    clear("textarea.teamedit");
+	    setValue("textarea.teamedit", importable);
 	    sleep(500);
-	    driver.findElement(By.xpath("//button[text()=' Import/Export']")).click();
-	    sleep(500);
-	    driver.findElement(By.cssSelector("textarea.teamedit")).clear();
-	    driver.findElement(By.cssSelector("textarea.teamedit")).sendKeys(importable);
-	    driver.findElement(By.cssSelector("input.textbox.teamnameedit")).clear();
+	    clear("input.textbox.teamnameedit");
 	    driver.findElement(By.cssSelector("input.textbox.teamnameedit")).sendKeys(teamName);
-	    driver.findElement(By.cssSelector("button.savebutton")).click();
+	    clickAt(By.cssSelector("button[name='saveImport']"));
 	    sleep(500);
-	    driver.findElement(By.id("tabtab-lobby")).click();
-	    sleep(500);
+	    clickAt(By.cssSelector("i.icon-home"));
+	    waitForElementPresent(By.cssSelector("button[name='search']"));
 	}
 	
 	public enum TurnEndStatus {

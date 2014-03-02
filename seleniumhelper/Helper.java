@@ -100,4 +100,20 @@ public class Helper {
 	public <T> T javascript(String script, Object...args) {
 		return (T)((JavascriptExecutor)driver).executeScript(script, args);
 	}
+	
+	/**
+	 * Temporary hack to clear textboxes, since it seems broken.
+	 * @param cssSelector
+	 */
+	public void clear(String cssSelector) {
+		javascript("document.querySelector(arguments[0]).value = ''", cssSelector);
+	}
+	
+	/**
+	 * Temporary hack to set text values instantly, since sendKeys is slow now.
+	 * @param cssSelector
+	 */
+	public void setValue(String cssSelector, String value) {
+		javascript("document.querySelector(arguments[0]).value = arguments[1]", cssSelector, value);
+	}
 }
